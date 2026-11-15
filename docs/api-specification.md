@@ -148,43 +148,34 @@ Findings: `public_key_exposed` | `no_exposure_observed_in_scope` | `insufficient
 
 ---
 
-### 2.2 Create scan (not implemented yet)
+### 2.2 Create scan (implemented)
 
-`POST /api/v1/scans`
+`POST /api/v1/scan`
 
 **Request**
 
 ```json
 {
-  "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
-  "chain_id": 1
+  "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"
 }
 ```
 
 | Field | Required | Notes |
 |---|---|---|
 | `address` | yes | Public address only |
-| `chain_id` | no | Default from server config |
+| `chain_id` | no | Ignored in MVP; server uses configured mainnet chain id 1 |
 
 **Rejected fields (must not be accepted):** `private_key`, `mnemonic`, `seed`, `password`, signed payloads for broadcasting.
 
-**Response `202 Accepted`**
+**Response `202 Accepted`** — returns a `ScanJob` (`id`, `status`, `stage`, `progress`, …).
 
-```json
-{
-  "scan_id": "01JABC...",
-  "status": "queued",
-  "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
-  "chain_id": 1,
-  "created_at": "2026-11-15T02:00:00Z"
-}
-```
+Storage is **in-memory** and lost on process restart.
 
 ---
 
-### 2.3 Get scan
+### 2.3 Get scan (implemented)
 
-`GET /api/v1/scans/{scan_id}`
+`GET /api/v1/scan/{id}`
 
 **Response `200` (completed example — elevated)**
 
@@ -268,30 +259,25 @@ Findings: `public_key_exposed` | `no_exposure_observed_in_scope` | `insufficient
 
 ---
 
-### 2.4 Get scan evidence detail (optional MVP+)
+### 2.4 Wallet routes (implemented)
 
-`GET /api/v1/scans/{scan_id}/exposures`
+| Method | Path | Behavior |
+|---|---|---|
+| GET | `/api/v1/wallet/{address}` | Account classification + balance (alias of `/accounts/{address}`) |
+| GET | `/api/v1/wallet/{address}/exposure` | Latest completed scan exposure, else live analysis |
+| GET | `/api/v1/wallet/{address}/risk` | Latest completed `RiskAssessment` (`404` if none) |
 
-Returns expanded exposure events including full uncompressed public key hex for verified items only.
+### 2.5 Reports (implemented)
 
----
+`GET /api/v1/reports/{id}`
 
-### 2.5 Meta: risk model
+Returns a complete `SecurityReport` (executive summary, wallet, cryptography, exposure, evidence, quantum threat explanation, risk, coverage, next steps, limitations, disclaimers).
 
-`GET /api/v1/meta/risk-model`
+No numerical compromise probability is included.
 
-```json
-{
-  "version": "qguard-risk-v1",
-  "classifications": [
-    "LOWER_EXPOSURE",
-    "ELEVATED_EXPOSURE",
-    "UNKNOWN",
-    "REQUIRES_REVIEW"
-  ],
-  "notes": "See docs/business-logic.md and docs/quantum-threat-model.md"
-}
-```
+### 2.6 Meta: risk model
+
+Risk model version is exposed on `/api/v1/info` and every assessment/report as `risk_model_version: qguard-risk-v1`.
 
 ---
 
@@ -329,7 +315,8 @@ Matches mandatory fields in `business-logic.md` §7.
 ## 4. Frontend ↔ backend interaction
 
 ```
-POST /scans  →  poll GET /scans/{id} every 1–2s until completed|failed
+POST /api/v1/scan  →  poll GET /api/v1/scan/{id} every 1–2s until completed|failed
+GET /api/v1/reports/{report_id}  →  full SecurityReport when scan completed
 ```
 
 Optional later: SSE/WebSocket; not required for MVP.

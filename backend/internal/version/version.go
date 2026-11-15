@@ -6,7 +6,7 @@ var (
 	// App is the product name.
 	App = "Q-Guard"
 	// Version is the application version reported by health/info endpoints.
-	Version = "0.3.0-exposure"
+	Version = "0.4.0-risk"
 	// RiskModelVersion is the active risk classification model identifier.
 	RiskModelVersion = "qguard-risk-v1"
 )

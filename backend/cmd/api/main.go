@@ -19,6 +19,7 @@ import (
 	"github.com/quantumshield/qguard/backend/internal/etherscan"
 	"github.com/quantumshield/qguard/backend/internal/exposure"
 	"github.com/quantumshield/qguard/backend/internal/history"
+	"github.com/quantumshield/qguard/backend/internal/repository"
 	"github.com/quantumshield/qguard/backend/internal/server"
 	"github.com/quantumshield/qguard/backend/internal/service"
 	"github.com/quantumshield/qguard/backend/internal/version"
@@ -91,11 +92,28 @@ func main() {
 		MaxTxs:   cfg.MaxTransactions,
 	}
 
+	store := repository.NewMemory(repository.MemoryConfig{
+		MaxScans:   256,
+		MaxReports: 256,
+		TTL:        24 * time.Hour,
+	})
+	scanSvc := &service.ScanService{
+		Store:    store,
+		RPC:      rpc,
+		History:  fetcher,
+		Exposure: exp,
+		ChainID:  cfg.ChainID,
+		MaxTxs:   cfg.MaxTransactions,
+		Timeout:  cfg.ScanTimeout,
+		Log:      log,
+	}
+
 	engine := server.NewEngine(server.Options{
 		Config:  cfg,
 		Log:     log,
 		RPC:     rpc,
 		Account: accountSvc,
+		Scan:    scanSvc,
 	})
 	httpServer := server.NewHTTPServer(cfg, engine)
 

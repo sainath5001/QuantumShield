@@ -160,6 +160,16 @@ Every assessment must separate these three in structured fields (see API / busin
 
 Do not imply Grover alone “breaks Ethereum wallets” in the same way Shor threatens ECDSA with known pubkeys.
 
+### 9.1 Theoretical vulnerability vs practical attack
+
+| Concept | Meaning in Q-Guard |
+|---|---|
+| Theoretical vulnerability | Under standard cryptographic assumptions, a future CRQC running Shor-type ECC-DL could recover an EOA private key **if** the corresponding public key is known. |
+| Practical attack today | Breaking Ethereum secp256k1 with currently available quantum computers is **not** claimed and is not treated as an observed event. |
+| Elevated exposure | Evidence that the public key is observable now (harvest-now), which matters **if** a CRQC arrives — not a statement that compromise has occurred. |
+
+Never claim that currently available quantum computers can break Ethereum secp256k1 keys.
+
 ---
 
 ## 10. Post-quantum readiness (educational scope)

@@ -88,7 +88,8 @@ QuantumShield/                 # repo root (product name: Q-Guard)
 | Etherscan v2 history + coverage model | Implemented |
 | Account / history HTTP endpoints | Implemented |
 | Signature recovery + exposure analysis | Implemented |
-| Risk scoring / scan jobs | **Not implemented** |
+| Risk engine + reports + scan jobs | Implemented (in-memory) |
+| Frontend / quantum-engine demos | **Not implemented** |
 | Frontend / quantum-engine | Reserved directories only |
 
 ---

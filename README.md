@@ -33,7 +33,14 @@ Also implemented (Prompt 4):
 - secp256k1 public-key recovery for legacy / EIP-2930 / EIP-1559 / EIP-4844
 - `GET /api/v1/accounts/:address/exposure` — verified exposure evidence (not a risk score)
 
-Not implemented yet: risk scoring, scan jobs, frontend, Qiskit demos.
+Also implemented (Prompt 5):
+
+- `qguard-risk-v1` risk engine + security reports
+- `POST /api/v1/scan`, `GET /api/v1/scan/:id`, `GET /api/v1/reports/:id`
+- `GET /api/v1/wallet/:address` (+ `/exposure`, `/risk`)
+- Thread-safe in-memory scan/report store (ephemeral)
+
+Not implemented yet: frontend, Qiskit demos, persistent database.
 
 ## Prerequisites
 

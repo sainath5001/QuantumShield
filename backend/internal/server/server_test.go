@@ -176,14 +176,18 @@ func TestInfoEndpointCapabilities(t *testing.T) {
 			AddressScanImplemented bool `json:"address_scan_implemented"`
 			PublicKeyRecovery      bool `json:"public_key_recovery"`
 			RiskAssessment         bool `json:"risk_assessment"`
+			PrivateKeysAccepted    bool `json:"private_keys_accepted"`
 		} `json:"capabilities"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if !body.Capabilities.HistoryRetrieval || !body.Capabilities.PublicKeyRecovery {
 		t.Fatal("expected history_retrieval and public_key_recovery true")
 	}
-	if body.Capabilities.AddressScanImplemented || body.Capabilities.RiskAssessment {
-		t.Fatal("scan jobs / risk assessment must remain false")
+	if !body.Capabilities.AddressScanImplemented || !body.Capabilities.RiskAssessment {
+		t.Fatal("expected address scan and risk assessment true")
+	}
+	if body.Capabilities.PrivateKeysAccepted {
+		t.Fatal("private keys must never be accepted")
 	}
 }
 

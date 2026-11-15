@@ -42,12 +42,18 @@
 - Fixture tests for legacy / 2930 / 1559 / 4844.
 - **Deferred:** risk scoring, scan jobs, frontend.
 
-### Phase 1d — Scanner core + risk (next)
+### Phase 1d — Risk engine + reports + scan workflow ✅ (Prompt 5)
 
-- In-memory `ScanRepository`.
-- Risk engine `qguard-risk-v1`.
-- `POST /api/v1/scans` + `GET /api/v1/scans/{id}`.
-- Unit/integration tests with fixtures.
+- Deterministic `qguard-risk-v1` engine (`internal/risk`).
+- Security report builder (`internal/report`).
+- In-memory scan/report repository with TTL/capacity.
+- Endpoints: `POST /scan`, `GET /scan/:id`, `GET /reports/:id`, wallet aliases.
+- Full Go test coverage for classifications and scan lifecycle.
+
+### Phase 2 — Frontend MVP (next)
+
+- Next.js App Router scaffold in `frontend/`.
+- Scan flow + report page + methodology/disclaimers.
 
 ### Phase 2 — Frontend MVP
 

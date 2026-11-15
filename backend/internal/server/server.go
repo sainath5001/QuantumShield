@@ -20,6 +20,7 @@ type Options struct {
 	Log     *slog.Logger
 	RPC     blockchain.RPCClient
 	Account *service.AccountService
+	Scan    *service.ScanService
 }
 
 // NewEngine builds the Gin engine with middleware and routes.
@@ -49,13 +50,25 @@ func NewEngine(opts Options) *gin.Engine {
 		rpcProbe = opts.RPC
 	}
 	meta := service.NewMetaService(opts.Config, rpcProbe)
-	api := handler.NewAPI(meta, opts.Account)
+	api := handler.NewAPI(meta, opts.Account, opts.Scan)
 
 	v1 := r.Group("/api/v1")
 	{
 		v1.GET("/health", api.Health)
 		v1.GET("/ready", api.Ready)
 		v1.GET("/info", api.Info)
+
+		// Scan workflow
+		v1.POST("/scan", api.StartScan)
+		v1.GET("/scan/:id", api.GetScan)
+		v1.GET("/reports/:id", api.GetReport)
+
+		// Wallet aliases (Prompt 5)
+		v1.GET("/wallet/:address", api.GetAccount)
+		v1.GET("/wallet/:address/exposure", api.GetAccountExposure)
+		v1.GET("/wallet/:address/risk", api.GetWalletRisk)
+
+		// Backward-compatible account routes
 		v1.GET("/accounts/:address", api.GetAccount)
 		v1.GET("/accounts/:address/transactions", api.GetAccountTransactions)
 		v1.GET("/accounts/:address/exposure", api.GetAccountExposure)
