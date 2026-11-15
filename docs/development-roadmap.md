@@ -65,6 +65,12 @@
 - Python package in `quantum-engine/` with toy Shor/Grover demos, fundamentals, PQC education, CLI, pytest.
 - Optional FastAPI sidecar later (not required; interface is functions + CLI).
 
+### Phase 3.5 — Local integration ✅
+
+- Frontend ↔ Go scan polling (2s / 180s timeout).
+- Quantum FastAPI sidecar + Quantum Lab experiment runner.
+- `scripts/run-local.sh`, `run-quantum.sh`, `run-frontend.sh`, `integration-smoke.sh`.
+
 ### Phase 4 — Hardening & expansion
 
 - OpenAPI package, optional persistence, multi-network, smart-account playbooks.

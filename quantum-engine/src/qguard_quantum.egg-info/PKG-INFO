@@ -3,7 +3,7 @@ Name: qguard-quantum
 Version: 0.1.0
 Summary: Q-Guard educational quantum research module (Qiskit). Not for attacking Ethereum keys.
 Author: Q-Guard
-License: Apache-2.0
+License-Expression: Apache-2.0
 Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 Requires-Dist: qiskit<2.0.0,>=1.2.0
@@ -12,6 +12,10 @@ Requires-Dist: numpy<3,>=1.24.0
 Provides-Extra: dev
 Requires-Dist: pytest>=8.0.0; extra == "dev"
 Requires-Dist: pytest-cov>=5.0.0; extra == "dev"
+Requires-Dist: httpx>=0.27.0; extra == "dev"
+Provides-Extra: api
+Requires-Dist: fastapi<1,>=0.115.0; extra == "api"
+Requires-Dist: uvicorn[standard]<1,>=0.30.0; extra == "api"
 
 # Q-Guard Quantum Engine
 
@@ -58,7 +62,14 @@ Pinned ranges in `pyproject.toml`:
 | numpy | ≥1.24.0,<3 | Numeric support for Qiskit |
 | pytest (dev) | ≥8.0.0 | Tests |
 
-No FastAPI microservice is shipped. The stable interface is Python functions (`qguard_quantum.interface`) plus the CLI. An HTTP layer would only be justified later to expose the same JSON payloads on localhost.
+Stable interfaces: Python functions (`qguard_quantum.interface`), CLI (`qguard-quantum`), and a **thin FastAPI sidecar** for frontend integration (`qguard-quantum-api`, default `http://127.0.0.1:8090`). The sidecar only wraps the same educational payloads — it does not talk to Ethereum or the Go scan path.
+
+```bash
+# from quantum-engine with venv activated and extras installed:
+pip install -e ".[api,dev]"
+../scripts/run-quantum.sh
+# GET /health  POST /demos/shor  POST /demos/grover  GET /explainers/post-quantum
+```
 
 ## Local setup (virtual environment)
 
@@ -87,6 +98,9 @@ qguard-quantum shor --n 15 --a 7 --counting-qubits 8 --shots 1024 --seed 42
 qguard-quantum grover --qubits 2 --target 11 --shots 1024 --seed 42
 qguard-quantum pqc
 qguard-quantum pqc --algorithm ML-KEM
+
+# Include full OpenQASM + text circuit diagrams (large for Shor):
+qguard-quantum --full shor --n 15 --a 7 --seed 42
 ```
 
 Equivalent module entrypoint:

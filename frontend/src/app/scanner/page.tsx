@@ -7,7 +7,7 @@ import { ErrorState } from "@/components/states/error-state";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScanForm } from "@/components/wallet/scan-form";
 import { ScanProgressPanel } from "@/components/wallet/scan-progress";
-import { ApiError } from "@/lib/api/client";
+import { humanizeApiError } from "@/lib/api/errors";
 import { pollScan, startScan } from "@/lib/api/qguard";
 import { recordScanStarted, updateSessionScan } from "@/lib/session/scan-history";
 import type { ScanJob } from "@/lib/models/types";
@@ -27,9 +27,11 @@ export default function ScannerPage() {
       recordScanStarted(started.id, started.address, started.status);
       setJob(started);
       const done = await pollScan(started.id, {
+        intervalMs: 2000,
+        timeoutMs: 180_000,
         onUpdate: (u) => {
           setJob(u);
-          updateSessionScan(u.id, { status: u.status });
+          updateSessionScan(u.id, { status: u.status, classification: u.risk?.classification });
         },
       });
       updateSessionScan(done.id, {
@@ -40,12 +42,19 @@ export default function ScannerPage() {
       });
       setJob(done);
       if (done.status === "completed") {
-        router.push(`/wallet/${done.address}?scan=${done.id}${done.report_id ? `&report=${done.report_id}` : ""}`);
+        if (!done.report_id) {
+          setError(
+            "Scan completed but no report_id was returned. Open wallet analysis anyway, or retry after checking backend logs.",
+          );
+          router.push(`/wallet/${done.address}?scan=${done.id}`);
+          return;
+        }
+        router.push(`/wallet/${done.address}?scan=${done.id}&report=${done.report_id}`);
       } else {
-        setError(done.error || "Scan failed.");
+        setError(done.error || "Scan failed. No successful assessment was invented from this failure.");
       }
     } catch (err) {
-      setError(err instanceof ApiError ? `${err.code}: ${err.message}` : "Unable to reach the Q-Guard API.");
+      setError(humanizeApiError(err));
     } finally {
       setLoading(false);
     }

@@ -13,6 +13,7 @@ import { AddressDisplay } from "@/components/wallet/address-display";
 import { EvidenceTable } from "@/components/wallet/evidence-table";
 import { FindingBadge, RiskBadge } from "@/components/wallet/risk-badge";
 import { ApiError } from "@/lib/api/client";
+import { humanizeApiError } from "@/lib/api/errors";
 import { getScan, getWalletExposure, getWalletRisk } from "@/lib/api/qguard";
 import { isValidEthereumAddress } from "@/lib/validation/address";
 import type { RiskAssessment, ScanJob, WalletExposureReport } from "@/lib/models/types";
@@ -63,7 +64,7 @@ export default function WalletAnalysisPage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : "Failed to load wallet analysis.");
+          setError(humanizeApiError(err, "Failed to load wallet analysis."));
         }
       } finally {
         if (!cancelled) setLoading(false);

@@ -1,2 +1,3 @@
 [console_scripts]
 qguard-quantum = qguard_quantum.cli:main
+qguard-quantum-api = qguard_quantum.http_server:main

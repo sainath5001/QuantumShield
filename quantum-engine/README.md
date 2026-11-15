@@ -43,7 +43,14 @@ Pinned ranges in `pyproject.toml`:
 | numpy | ≥1.24.0,<3 | Numeric support for Qiskit |
 | pytest (dev) | ≥8.0.0 | Tests |
 
-No FastAPI microservice is shipped. The stable interface is Python functions (`qguard_quantum.interface`) plus the CLI. An HTTP layer would only be justified later to expose the same JSON payloads on localhost.
+Stable interfaces: Python functions (`qguard_quantum.interface`), CLI (`qguard-quantum`), and a **thin FastAPI sidecar** for frontend integration (`qguard-quantum-api`, default `http://127.0.0.1:8090`). The sidecar only wraps the same educational payloads — it does not talk to Ethereum or the Go scan path.
+
+```bash
+# from quantum-engine with venv activated and extras installed:
+pip install -e ".[api,dev]"
+../scripts/run-quantum.sh
+# GET /health  POST /demos/shor  POST /demos/grover  GET /explainers/post-quantum
+```
 
 ## Local setup (virtual environment)
 

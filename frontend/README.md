@@ -37,6 +37,7 @@ Open [http://localhost:3000](http://localhost:3000). Start the Go API on `127.0.
 | Variable | Purpose |
 | --- | --- |
 | `NEXT_PUBLIC_QGUARD_API_BASE_URL` | Go API base URL (default `http://127.0.0.1:8080`) |
+| `NEXT_PUBLIC_QGUARD_QUANTUM_API_BASE_URL` | Quantum FastAPI sidecar (default `http://127.0.0.1:8090`) |
 | `NEXT_PUBLIC_QGUARD_USE_MOCKS` | `true` only for isolated UI work — keep `false` for real API flows |
 
 **Never** put Etherscan or RPC API keys in frontend env vars.
@@ -60,12 +61,17 @@ Frontend types follow **runtime Go domain JSON** (Prompt 5), which differs sligh
 
 Session metrics / recent scans are stored in **browser sessionStorage** because the backend has no list-scans endpoint and storage is in-memory.
 
-## Remaining integration tasks
+## Integration (Prompt 8)
 
-- [ ] Optional bridge from Quantum Lab UI → `qguard_quantum.interface` (CLI/HTTP sidecar)
-- [ ] Align `docs/api-specification.md` examples with runtime `id` / `risk` / `exposure` field names
+See [`docs/integration.md`](../docs/integration.md). Local startup: `../scripts/run-local.sh`.
+
+Scan polling: every 2s, 180s timeout. Quantum Lab calls the FastAPI sidecar (no fabricated histograms).
+
+## Remaining follow-ups
+
 - [ ] Optional SSE for scan progress (polling works for MVP)
 - [ ] Persist session scan index across devices (requires backend list endpoint)
+- [ ] Upgrade Next.js past CVE-flagged 15.1.0 when convenient
 
 ## Design
 

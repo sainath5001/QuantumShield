@@ -323,21 +323,25 @@ Optional later: SSE/WebSocket; not required for MVP.
 
 ---
 
-## 5. Quantum module API (Phase 2 proposal — not MVP-blocking)
+## 5. Quantum module API (implemented educational sidecar)
 
-Base: `http://localhost:8090` (Python sidecar)
+Base: `http://127.0.0.1:8090` (Python FastAPI wrapping `qguard_quantum.interface`)
 
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/health` | Liveness |
-| GET | `/demos` | List demos |
-| GET | `/demos/shor/small-factor` | Toy Shor explanation + result metadata |
-| GET | `/demos/grover/small-search` | Toy Grover explanation + result metadata |
-| GET | `/explainers/post-quantum` | Static structured explainer JSON |
+| GET | `/info` | Module metadata + limitations |
+| GET | `/demos` | List available experiments |
+| GET | `/demos/fundamentals` | Fundamentals explainer JSON |
+| POST | `/demos/shor` | Toy Shor run (`n`,`a`,`shots`,`seed`,…); returns simulator JSON |
+| POST | `/demos/grover` | Toy Grover run (`n_qubits`,`target`,`shots`,`seed`,…) |
+| GET | `/explainers/post-quantum` | PQC educational overview |
 
-Responses must include `limitations` stating these are educational and unrelated to any Ethereum address scan.
+Responses include `limitations` and must never be treated as wallet-scan evidence.
 
-The Go scan API must **not** call these endpoints when producing assessments.
+**Runtime scan JSON note:** Completed Go scan jobs use fields `id`, `exposure`, `risk`, `report_id` (see `backend/internal/domain`). Older examples that showed `scan_id` / nested `assessment` on the job are superseded by those structs.
+
+The Go scan API must **not** call these quantum endpoints when producing assessments. Scan job cancellation is **not** supported.
 
 ---
 

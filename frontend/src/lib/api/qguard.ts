@@ -57,21 +57,34 @@ export async function getWalletRisk(address: string): Promise<RiskAssessment> {
   return apiFetch<RiskAssessment>(`/api/v1/wallet/${encodeURIComponent(address)}/risk`);
 }
 
-/** Poll until completed or failed. */
+/** Poll until completed or failed. Default interval 2s; default timeout 180s. Cancellation of jobs is not supported by the API. */
 export async function pollScan(
   id: string,
-  opts?: { intervalMs?: number; signal?: AbortSignal; onUpdate?: (job: ScanJob) => void },
+  opts?: {
+    intervalMs?: number;
+    timeoutMs?: number;
+    signal?: AbortSignal;
+    onUpdate?: (job: ScanJob) => void;
+  },
 ): Promise<ScanJob> {
-  const intervalMs = opts?.intervalMs ?? 1500;
+  const intervalMs = opts?.intervalMs ?? 2000;
+  const timeoutMs = opts?.timeoutMs ?? 180_000;
+  const started = Date.now();
   for (;;) {
     if (opts?.signal?.aborted) {
       throw new Error("Scan polling aborted");
+    }
+    if (Date.now() - started > timeoutMs) {
+      throw new Error(
+        `Scan timed out after ${Math.round(timeoutMs / 1000)}s while still pending/running. The backend may still finish — check GET /api/v1/scan/${id}.`,
+      );
     }
     const job = await getScan(id);
     opts?.onUpdate?.(job);
     if (job.status === "completed" || job.status === "failed") {
       return job;
     }
+    // statuses: queued | running (API has no cancelled status)
     await new Promise((r) => setTimeout(r, intervalMs));
   }
 }

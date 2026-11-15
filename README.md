@@ -45,11 +45,12 @@ Also implemented (Prompt 6):
 - `quantum-engine/` educational Qiskit package (`qguard-quantum` CLI): fundamentals, N=15 Shor toy, tiny Grover, PQC explainers
 - Independent of scan evidence — see `quantum-engine/README.md`
 
-Also implemented (Prompt 7):
+Also implemented (Prompt 7–8):
 
 - Next.js frontend against `/api/v1` (see `frontend/README.md`)
+- Quantum FastAPI sidecar on `:8090` + local integration scripts (`docs/integration.md`)
 
-Not implemented yet: persistent database; Quantum Lab → Python experiment HTTP bridge.
+Not implemented yet: persistent database; scan cancellation; SSE progress.
 
 ## Prerequisites
 
@@ -63,19 +64,14 @@ cp .env.example .env
 # edit .env — set QGUARD_ETH_RPC_URL and QGUARD_ETHERSCAN_API_KEY
 ```
 
-## Run the API locally
+## Run the local stack
 
 ```bash
-# from repository root
-./scripts/run-api.sh
-```
-
-Or:
-
-```bash
-cd backend
-# ensure env vars are exported or ../.env exists
-go run ./cmd/api
+./scripts/run-local.sh          # prints three-terminal instructions
+./scripts/run-api.sh            # Go API :8080 (needs .env with RPC + Etherscan)
+./scripts/run-quantum.sh        # Quantum education API :8090
+./scripts/run-frontend.sh       # Next.js :3000
+./scripts/integration-smoke.sh  # optional contract smoke when services are up
 ```
 
 Server listens on `QGUARD_SERVER_HOST:QGUARD_SERVER_PORT` (default `127.0.0.1:8080`).

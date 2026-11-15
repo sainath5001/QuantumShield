@@ -3,6 +3,8 @@ pyproject.toml
 src/qguard_quantum/__init__.py
 src/qguard_quantum/__main__.py
 src/qguard_quantum/cli.py
+src/qguard_quantum/http_api.py
+src/qguard_quantum/http_server.py
 src/qguard_quantum/interface.py
 src/qguard_quantum/logging_config.py
 src/qguard_quantum/validation.py
@@ -24,6 +26,7 @@ src/qguard_quantum/visualization/__init__.py
 src/qguard_quantum/visualization/circuits.py
 tests/test_fundamentals.py
 tests/test_grover.py
+tests/test_http_api.py
 tests/test_shor.py
 tests/test_validation.py
 tests/test_visualization_and_interface.py

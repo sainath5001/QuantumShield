@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AddressDisplay } from "@/components/wallet/address-display";
 import { EvidenceTable } from "@/components/wallet/evidence-table";
 import { FindingBadge, RiskBadge } from "@/components/wallet/risk-badge";
-import { ApiError } from "@/lib/api/client";
+import { humanizeApiError } from "@/lib/api/errors";
 import { getReport } from "@/lib/api/qguard";
 import type { SecurityReport } from "@/lib/models/types";
 import { formatIso } from "@/lib/utils";
@@ -31,9 +31,10 @@ export default function ReportDetailPage() {
       .catch((err) => {
         if (!cancelled) {
           setError(
-            err instanceof ApiError
-              ? err.message
-              : "Report not found. In-memory storage may have been cleared by a backend restart.",
+            humanizeApiError(
+              err,
+              "Report not found. In-memory storage may have been cleared by a backend restart.",
+            ),
           );
         }
       })

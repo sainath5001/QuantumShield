@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RiskBadge } from "@/components/wallet/risk-badge";
 import { ScanForm } from "@/components/wallet/scan-form";
 import { StatCard } from "@/components/wallet/stat-card";
-import { ApiError } from "@/lib/api/client";
+import { humanizeApiError } from "@/lib/api/errors";
 import { pollScan, startScan } from "@/lib/api/qguard";
 import {
   computeSessionStats,
@@ -43,8 +43,10 @@ export default function OverviewPage() {
       const job = await startScan(values.address);
       recordScanStarted(job.id, job.address, job.status);
       const done = await pollScan(job.id, {
+        intervalMs: 2000,
+        timeoutMs: 180_000,
         onUpdate: (u) => {
-          updateSessionScan(u.id, { status: u.status });
+          updateSessionScan(u.id, { status: u.status, classification: u.risk?.classification });
         },
       });
       updateSessionScan(done.id, {
@@ -57,12 +59,14 @@ export default function OverviewPage() {
       setRecords(list);
       setStats(computeSessionStats(list));
       if (done.status === "completed") {
-        router.push(`/wallet/${done.address}?scan=${done.id}`);
+        router.push(
+          `/wallet/${done.address}?scan=${done.id}${done.report_id ? `&report=${done.report_id}` : ""}`,
+        );
       } else {
-        setError(done.error || "Scan failed.");
+        setError(done.error || "Scan failed. No successful assessment was invented from this failure.");
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to start scan.");
+      setError(humanizeApiError(err, "Unable to start scan."));
     } finally {
       setLoading(false);
     }
