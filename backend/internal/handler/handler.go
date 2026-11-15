@@ -146,6 +146,10 @@ func (a *API) StartScan(c *gin.Context) {
 	}
 	job, err := a.scan.StartScan(c.Request.Context(), req.Address)
 	if err != nil {
+		if errors.Is(err, service.ErrTooManyConcurrentScans) {
+			AbortWithAPIError(c, apierror.New(http.StatusTooManyRequests, "RATE_LIMITED", "Too many concurrent scans. Retry later."))
+			return
+		}
 		if errors.Is(err, repository.ErrCapacity) {
 			AbortWithAPIError(c, apierror.New(http.StatusServiceUnavailable, "CAPACITY_EXCEEDED", "In-memory scan capacity exceeded; retry later or restart the process."))
 			return
@@ -205,14 +209,15 @@ func mapDomainError(err error) *apierror.Error {
 	if errors.As(err, &ae) {
 		switch ae.Code {
 		case etherscan.CodeInvalidAddr:
-			return apierror.BadRequest(apierror.CodeInvalidRequest, ae.Message)
+			return apierror.BadRequest(apierror.CodeInvalidRequest, "Invalid Ethereum address.")
 		case etherscan.CodeRateLimited:
-			return apierror.New(http.StatusTooManyRequests, "RATE_LIMITED", ae.Message)
+			return apierror.New(http.StatusTooManyRequests, "RATE_LIMITED", "History provider rate limit reached. Retry later.")
 		default:
-			return apierror.New(http.StatusBadGateway, "HISTORY_PROVIDER_ERROR", ae.Message)
+			return apierror.New(http.StatusBadGateway, "HISTORY_PROVIDER_ERROR", "History provider request failed.")
 		}
 	}
-	return apierror.New(http.StatusBadGateway, "RPC_UNAVAILABLE", err.Error())
+	// Do not leak raw internal/RPC error strings to clients.
+	return apierror.New(http.StatusBadGateway, "RPC_UNAVAILABLE", "Upstream blockchain or history provider request failed.")
 }
 
 // NotFound is the fallback JSON 404 handler.

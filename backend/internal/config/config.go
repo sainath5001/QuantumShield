@@ -42,6 +42,10 @@ type Config struct {
 	RateLimitRPS   float64
 	RateLimitBurst int
 
+	// Inbound HTTP rate limit (per client IP). Separate from outbound Etherscan limits.
+	HTTPRateLimitRPS   float64
+	HTTPRateLimitBurst int
+
 	EtherscanMaxRetries   int
 	EtherscanRetryBackoff time.Duration
 	BlockHashCheckLimit   int
@@ -75,6 +79,8 @@ func Load() (Config, error) {
 		MaxTransactions:       getInt("QGUARD_SCAN_MAX_TXS", 500),
 		RateLimitRPS:          getFloat("QGUARD_RATE_LIMIT_RPS", 4),
 		RateLimitBurst:        getInt("QGUARD_RATE_LIMIT_BURST", 8),
+		HTTPRateLimitRPS:      getFloat("QGUARD_HTTP_RATE_LIMIT_RPS", 20),
+		HTTPRateLimitBurst:    getInt("QGUARD_HTTP_RATE_LIMIT_BURST", 40),
 		EtherscanMaxRetries:   getInt("QGUARD_ETHERSCAN_MAX_RETRIES", 3),
 		EtherscanRetryBackoff: getDuration("QGUARD_ETHERSCAN_RETRY_BACKOFF", 200*time.Millisecond),
 		BlockHashCheckLimit:   getInt("QGUARD_BLOCK_HASH_CHECK_LIMIT", 5),
@@ -152,6 +158,12 @@ func (c Config) Validate() error {
 	}
 	if c.RateLimitBurst < 1 {
 		errs = append(errs, "QGUARD_RATE_LIMIT_BURST must be at least 1")
+	}
+	if c.HTTPRateLimitRPS < 0 {
+		errs = append(errs, "QGUARD_HTTP_RATE_LIMIT_RPS must be >= 0 (0 disables inbound limiting)")
+	}
+	if c.HTTPRateLimitRPS > 0 && c.HTTPRateLimitBurst < 1 {
+		errs = append(errs, "QGUARD_HTTP_RATE_LIMIT_BURST must be at least 1 when inbound limiting is enabled")
 	}
 	if c.EtherscanMaxRetries < 0 {
 		errs = append(errs, "QGUARD_ETHERSCAN_MAX_RETRIES must be >= 0")

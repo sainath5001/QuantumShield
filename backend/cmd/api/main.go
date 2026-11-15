@@ -98,14 +98,15 @@ func main() {
 		TTL:        24 * time.Hour,
 	})
 	scanSvc := &service.ScanService{
-		Store:    store,
-		RPC:      rpc,
-		History:  fetcher,
-		Exposure: exp,
-		ChainID:  cfg.ChainID,
-		MaxTxs:   cfg.MaxTransactions,
-		Timeout:  cfg.ScanTimeout,
-		Log:      log,
+		Store:         store,
+		RPC:           rpc,
+		History:       fetcher,
+		Exposure:      exp,
+		ChainID:       cfg.ChainID,
+		MaxTxs:        cfg.MaxTransactions,
+		Timeout:       cfg.ScanTimeout,
+		Log:           log,
+		MaxConcurrent: 4,
 	}
 
 	engine := server.NewEngine(server.Options{

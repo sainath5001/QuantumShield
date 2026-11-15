@@ -45,7 +45,7 @@ type Memory struct {
 	mu       sync.RWMutex
 	scans    map[string]*domain.ScanJob
 	reports  map[string]*domain.SecurityReport
-	byAddr   map[common.Address]string // latest scan id
+	byAddr   map[common.Address]string // latest *completed* scan id per address
 	byScan   map[string]string         // scan id -> report id
 	maxScans int
 	maxReps  int
@@ -85,7 +85,11 @@ func (m *Memory) CreateScan(_ context.Context, job *domain.ScanJob) error {
 	}
 	cp := cloneScan(job)
 	m.scans[cp.ID] = cp
-	m.byAddr[cp.Address] = cp.ID
+	// Do not overwrite byAddr with queued/running jobs — wallet "latest"
+	// lookups must prefer the most recent *completed* assessment.
+	if cp.Status == domain.ScanCompleted {
+		m.byAddr[cp.Address] = cp.ID
+	}
 	return nil
 }
 
@@ -97,7 +101,9 @@ func (m *Memory) UpdateScan(_ context.Context, job *domain.ScanJob) error {
 	}
 	cp := cloneScan(job)
 	m.scans[cp.ID] = cp
-	m.byAddr[cp.Address] = cp.ID
+	if cp.Status == domain.ScanCompleted {
+		m.byAddr[cp.Address] = cp.ID
+	}
 	return nil
 }
 
@@ -119,7 +125,7 @@ func (m *Memory) LatestScanByAddress(_ context.Context, addr common.Address) (*d
 		return nil, ErrNotFound
 	}
 	job, ok := m.scans[id]
-	if !ok {
+	if !ok || job.Status != domain.ScanCompleted {
 		return nil, ErrNotFound
 	}
 	return cloneScan(job), nil

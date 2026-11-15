@@ -43,7 +43,10 @@ func NewEngine(opts Options) *gin.Engine {
 	r.Use(middleware.Recovery(opts.Log))
 	r.Use(middleware.Logger(opts.Log))
 	r.Use(middleware.CORS(opts.Config.CORSOrigins))
+	r.Use(middleware.NewIPRateLimiter(opts.Config.HTTPRateLimitRPS, opts.Config.HTTPRateLimitBurst).Middleware())
+	r.Use(middleware.MaxBodyBytes(1 << 20))
 	r.Use(middleware.Timeout(opts.Config.RequestTimeout))
+	r.MaxMultipartMemory = 1 << 20 // 1 MiB
 
 	var rpcProbe service.RPCProbe
 	if opts.RPC != nil {

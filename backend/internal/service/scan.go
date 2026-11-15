@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +18,9 @@ import (
 	"github.com/quantumshield/qguard/backend/internal/risk"
 )
 
+// ErrTooManyConcurrentScans is returned when the process-wide running-scan cap is hit.
+var ErrTooManyConcurrentScans = errors.New("too many concurrent scans")
+
 // ScanService orchestrates the read-only wallet scanning workflow.
 type ScanService struct {
 	Store    repository.ScanStore
@@ -26,6 +31,23 @@ type ScanService struct {
 	MaxTxs   int
 	Timeout  time.Duration
 	Log      *slog.Logger
+
+	// MaxConcurrent caps simultaneous run() goroutines (default 4).
+	MaxConcurrent int
+
+	semOnce sync.Once
+	sem     chan struct{}
+}
+
+func (s *ScanService) concurrencySem() chan struct{} {
+	s.semOnce.Do(func() {
+		n := s.MaxConcurrent
+		if n <= 0 {
+			n = 4
+		}
+		s.sem = make(chan struct{}, n)
+	})
+	return s.sem
 }
 
 // StartScan validates the address and enqueues an asynchronous scan job.
@@ -37,6 +59,14 @@ func (s *ScanService) StartScan(ctx context.Context, rawAddress string) (*domain
 	if s.Store == nil {
 		return nil, fmt.Errorf("scan store is not configured")
 	}
+	sem := s.concurrencySem()
+	select {
+	case sem <- struct{}{}:
+		// slot reserved until run() finishes
+	default:
+		return nil, ErrTooManyConcurrentScans
+	}
+
 	now := time.Now().UTC()
 	job := &domain.ScanJob{
 		ID:        uuid.NewString(),
@@ -48,6 +78,7 @@ func (s *ScanService) StartScan(ctx context.Context, rawAddress string) (*domain
 		CreatedAt: now,
 	}
 	if err := s.Store.CreateScan(ctx, job); err != nil {
+		<-sem
 		return nil, err
 	}
 	go s.run(job.ID)
@@ -96,6 +127,8 @@ func (s *ScanService) LatestExposure(ctx context.Context, rawAddress string) (*d
 }
 
 func (s *ScanService) run(scanID string) {
+	defer func() { <-s.concurrencySem() }()
+
 	log := s.Log
 	if log == nil {
 		log = slog.Default()
@@ -125,11 +158,23 @@ func (s *ScanService) run(scanID string) {
 		job.Status = domain.ScanFailed
 		job.Stage = domain.StageFailed
 		job.CompletedAt = &fail
-		job.Error = err.Error()
-		job.Progress = domain.ScanProgress{Stage: domain.StageFailed, Message: err.Error()}
+		// Public message is sanitized; full error stays in logs only.
+		job.Error = publicScanFailure(err)
+		job.Progress = domain.ScanProgress{Stage: domain.StageFailed, Message: job.Error}
 		_ = s.Store.UpdateScan(context.Background(), job)
 		log.Warn("scan failed", "scan_id", scanID, "err", err)
 		return
+	}
+}
+
+func publicScanFailure(err error) string {
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		return "Scan timed out before completion. History or RPC may be slow; retry later."
+	case errors.Is(err, context.Canceled):
+		return "Scan was canceled."
+	default:
+		return "Scan failed due to a provider or internal error. Check server logs for details."
 	}
 }
 

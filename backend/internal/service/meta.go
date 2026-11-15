@@ -83,15 +83,17 @@ func (s *MetaService) Ready(ctx context.Context) ReadyResponse {
 		if err := s.rpcProbe.VerifyConnection(probeCtx); err != nil {
 			checks["ethereum_rpc"] = config.CheckResult{
 				Status:  "error",
-				Message: err.Error(),
+				Message: "RPC connectivity or chain ID verification failed",
 			}
 			ready = false
+			_ = err
 		} else if bn, err := s.rpcProbe.BlockNumber(probeCtx); err != nil {
 			checks["ethereum_rpc"] = config.CheckResult{
 				Status:  "error",
-				Message: err.Error(),
+				Message: "RPC block number probe failed",
 			}
 			ready = false
+			_ = err
 		} else {
 			checks["ethereum_rpc"] = config.CheckResult{
 				Status:  "ok",

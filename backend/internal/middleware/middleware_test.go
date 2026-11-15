@@ -60,3 +60,25 @@ func TestCORSPreflight(t *testing.T) {
 		t.Fatalf("status = %d", rec.Code)
 	}
 }
+
+func TestIPRateLimiter(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	lim := middleware.NewIPRateLimiter(1, 1)
+	r := gin.New()
+	r.Use(lim.Middleware())
+	r.GET("/ok", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	req := httptest.NewRequest(http.MethodGet, "/ok", nil)
+	req.RemoteAddr = "203.0.113.10:1234"
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("first status = %d", rec.Code)
+	}
+
+	rec2 := httptest.NewRecorder()
+	r.ServeHTTP(rec2, req)
+	if rec2.Code != http.StatusTooManyRequests {
+		t.Fatalf("second status = %d, want 429", rec2.Code)
+	}
+}

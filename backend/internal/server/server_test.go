@@ -41,6 +41,8 @@ func testConfig() config.Config {
 		MaxTransactions:       500,
 		RateLimitRPS:          4,
 		RateLimitBurst:        8,
+		HTTPRateLimitRPS:      0, // disable inbound limiter in unit tests
+		HTTPRateLimitBurst:    0,
 		EtherscanMaxRetries:   1,
 		EtherscanRetryBackoff: time.Millisecond,
 		BlockHashCheckLimit:   0,

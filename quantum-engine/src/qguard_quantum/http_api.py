@@ -131,8 +131,8 @@ def shor(req: ShorRequest) -> dict[str, Any]:
         )
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=500, detail=f"Experiment failed: {exc}") from exc
+    except Exception:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail="Experiment failed.") from None
     return result if req.full else _compact(result)
 
 
@@ -150,8 +150,8 @@ def grover(req: GroverRequest) -> dict[str, Any]:
         result = run_experiment("grover", **kwargs)
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=500, detail=f"Experiment failed: {exc}") from exc
+    except Exception:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail="Experiment failed.") from None
     return result if req.full else _compact(result)
 
 
