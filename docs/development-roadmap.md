@@ -24,12 +24,19 @@
 - Middleware: request ID, logging, recovery, CORS, timeouts.
 - Tests for config, health/ready, middleware, errors.
 - `.env.example`, `README.md`, scripts.
-- **Deferred:** scanning, RPC/Etherscan clients, decode/recovery, risk, repository, frontend, Qiskit.
 
-### Phase 1b — Scanner core (next)
+### Phase 1b — RPC + Etherscan history ✅ (Prompt 3)
+
+- Mainnet-only RPC client with chain ID enforcement.
+- Account classification via `eth_getCode` / balance.
+- Etherscan API **v2** `txlist` client: pagination, rate limits, retries, coverage model.
+- Endpoints: `GET /api/v1/accounts/:address`, `.../transactions`.
+- Mocked unit tests + documented fixtures.
+- **Deferred:** signature recovery, risk scoring, scan jobs, frontend, Qiskit.
+
+### Phase 1c — Scanner core (next)
 
 - In-memory `ScanRepository`.
-- Ethereum RPC + Etherscan clients with rate-limit handling.
 - Tx decode + recovery + verification.
 - Risk engine `qguard-risk-v1`.
 - `POST /api/v1/scans` + `GET /api/v1/scans/{id}`.

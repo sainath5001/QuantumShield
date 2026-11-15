@@ -42,6 +42,10 @@ type Config struct {
 	RateLimitRPS   float64
 	RateLimitBurst int
 
+	EtherscanMaxRetries   int
+	EtherscanRetryBackoff time.Duration
+	BlockHashCheckLimit   int
+
 	CORSOrigins []string
 }
 
@@ -55,23 +59,26 @@ func (c Config) Address() string {
 // (callers may use godotenv before Load for local development).
 func Load() (Config, error) {
 	cfg := Config{
-		AppEnv:              getString("QGUARD_APP_ENV", EnvDevelopment),
-		LogLevel:            getString("QGUARD_LOG_LEVEL", "info"),
-		ServerHost:          getString("QGUARD_SERVER_HOST", "127.0.0.1"),
-		ServerPort:          getInt("QGUARD_SERVER_PORT", 8080),
-		EthereumRPCURL:      strings.TrimSpace(os.Getenv("QGUARD_ETH_RPC_URL")),
-		ChainID:             int64(getInt("QGUARD_CHAIN_ID", 1)),
-		EtherscanAPIKey:     strings.TrimSpace(os.Getenv("QGUARD_ETHERSCAN_API_KEY")),
-		EtherscanBaseURL:    getString("QGUARD_ETHERSCAN_API_URL", "https://api.etherscan.io/api"),
-		EtherscanAPIVersion: getString("QGUARD_ETHERSCAN_API_VERSION", "v1"),
-		RequestTimeout:      getDuration("QGUARD_REQUEST_TIMEOUT", 15*time.Second),
-		ScanTimeout:         getDuration("QGUARD_SCAN_TIMEOUT", 120*time.Second),
-		MaxHistoryPageSize:  getInt("QGUARD_MAX_HISTORY_PAGE_SIZE", 100),
-		MaxHistoryPages:     getInt("QGUARD_ETHERSCAN_MAX_PAGES", 10),
-		MaxTransactions:     getInt("QGUARD_SCAN_MAX_TXS", 500),
-		RateLimitRPS:        getFloat("QGUARD_RATE_LIMIT_RPS", 4),
-		RateLimitBurst:      getInt("QGUARD_RATE_LIMIT_BURST", 8),
-		CORSOrigins:         splitCSV(getString("QGUARD_CORS_ORIGINS", "http://localhost:3000")),
+		AppEnv:                getString("QGUARD_APP_ENV", EnvDevelopment),
+		LogLevel:              getString("QGUARD_LOG_LEVEL", "info"),
+		ServerHost:            getString("QGUARD_SERVER_HOST", "127.0.0.1"),
+		ServerPort:            getInt("QGUARD_SERVER_PORT", 8080),
+		EthereumRPCURL:        strings.TrimSpace(os.Getenv("QGUARD_ETH_RPC_URL")),
+		ChainID:               int64(getInt("QGUARD_CHAIN_ID", 1)),
+		EtherscanAPIKey:       strings.TrimSpace(os.Getenv("QGUARD_ETHERSCAN_API_KEY")),
+		EtherscanBaseURL:      getString("QGUARD_ETHERSCAN_API_URL", "https://api.etherscan.io/v2/api"),
+		EtherscanAPIVersion:   getString("QGUARD_ETHERSCAN_API_VERSION", "v2"),
+		RequestTimeout:        getDuration("QGUARD_REQUEST_TIMEOUT", 15*time.Second),
+		ScanTimeout:           getDuration("QGUARD_SCAN_TIMEOUT", 120*time.Second),
+		MaxHistoryPageSize:    getInt("QGUARD_MAX_HISTORY_PAGE_SIZE", 100),
+		MaxHistoryPages:       getInt("QGUARD_ETHERSCAN_MAX_PAGES", 10),
+		MaxTransactions:       getInt("QGUARD_SCAN_MAX_TXS", 500),
+		RateLimitRPS:          getFloat("QGUARD_RATE_LIMIT_RPS", 4),
+		RateLimitBurst:        getInt("QGUARD_RATE_LIMIT_BURST", 8),
+		EtherscanMaxRetries:   getInt("QGUARD_ETHERSCAN_MAX_RETRIES", 3),
+		EtherscanRetryBackoff: getDuration("QGUARD_ETHERSCAN_RETRY_BACKOFF", 200*time.Millisecond),
+		BlockHashCheckLimit:   getInt("QGUARD_BLOCK_HASH_CHECK_LIMIT", 5),
+		CORSOrigins:           splitCSV(getString("QGUARD_CORS_ORIGINS", "http://localhost:3000")),
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -109,8 +116,8 @@ func (c Config) Validate() error {
 		errs = append(errs, fmt.Sprintf("QGUARD_ETH_RPC_URL is not a valid URL: %v", err))
 	}
 
-	if c.ChainID <= 0 {
-		errs = append(errs, fmt.Sprintf("QGUARD_CHAIN_ID must be a positive integer (got %d)", c.ChainID))
+	if c.ChainID != 1 {
+		errs = append(errs, fmt.Sprintf("MVP supports Ethereum Mainnet only; QGUARD_CHAIN_ID must be 1 (got %d)", c.ChainID))
 	}
 
 	if c.EtherscanAPIKey == "" {
@@ -145,6 +152,18 @@ func (c Config) Validate() error {
 	}
 	if c.RateLimitBurst < 1 {
 		errs = append(errs, "QGUARD_RATE_LIMIT_BURST must be at least 1")
+	}
+	if c.EtherscanMaxRetries < 0 {
+		errs = append(errs, "QGUARD_ETHERSCAN_MAX_RETRIES must be >= 0")
+	}
+	if c.EtherscanRetryBackoff < 0 {
+		errs = append(errs, "QGUARD_ETHERSCAN_RETRY_BACKOFF must be >= 0")
+	}
+	if c.BlockHashCheckLimit < 0 {
+		errs = append(errs, "QGUARD_BLOCK_HASH_CHECK_LIMIT must be >= 0")
+	}
+	if !strings.EqualFold(c.EtherscanAPIVersion, "v2") {
+		errs = append(errs, fmt.Sprintf("QGUARD_ETHERSCAN_API_VERSION must be v2 for the current Etherscan API (got %q)", c.EtherscanAPIVersion))
 	}
 	if len(c.CORSOrigins) == 0 {
 		errs = append(errs, "QGUARD_CORS_ORIGINS must include at least one origin")

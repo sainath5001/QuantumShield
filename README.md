@@ -16,18 +16,19 @@ Repository folder: `QuantumShield`. Product name: **Q-Guard**.
 | `docs/` | Architecture, threat model, API, cryptography |
 | `scripts/` | Local helper scripts |
 
-## Current milestone: backend foundation
+## Current milestone: RPC + history integration
 
 Implemented:
 
-- Configuration from environment (validated at startup)
+- Configuration from environment (Mainnet + Etherscan API v2)
 - `GET /api/v1/health` — liveness + version
-- `GET /api/v1/ready` — config readiness (**does not** probe RPC/Etherscan connectivity)
-- `GET /api/v1/info` — chain/capability metadata (scan features marked not implemented)
+- `GET /api/v1/ready` — probes Ethereum RPC chain ID; does **not** claim Etherscan is healthy
+- `GET /api/v1/info` — capabilities (`history_retrieval` true; scan/recovery still false)
+- `GET /api/v1/accounts/:address` — balance + code-based classification signal
+- `GET /api/v1/accounts/:address/transactions` — Etherscan normal tx history + coverage
 - Middleware: request ID, structured logging, recovery, CORS, request timeout
-- Structured JSON errors
 
-Not implemented yet: address scanning, transaction decode, pubkey recovery, risk scoring, frontend, Qiskit demos.
+Not implemented yet: signature recovery, risk scoring, scan jobs, frontend, Qiskit demos.
 
 ## Prerequisites
 
@@ -64,6 +65,8 @@ Server listens on `QGUARD_SERVER_HOST:QGUARD_SERVER_PORT` (default `127.0.0.1:80
 curl -s http://127.0.0.1:8080/api/v1/health | jq
 curl -s http://127.0.0.1:8080/api/v1/ready | jq
 curl -s http://127.0.0.1:8080/api/v1/info | jq
+curl -s http://127.0.0.1:8080/api/v1/accounts/0x0000000000000000000000000000000000000000 | jq
+curl -s "http://127.0.0.1:8080/api/v1/accounts/0x0000000000000000000000000000000000000000/transactions" | jq
 ```
 
 ## Test

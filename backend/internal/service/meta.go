@@ -2,18 +2,28 @@
 package service
 
 import (
+	"context"
+	"time"
+
 	"github.com/quantumshield/qguard/backend/internal/config"
 	"github.com/quantumshield/qguard/backend/internal/version"
 )
 
+// RPCProbe verifies Ethereum RPC readiness without implying indexer health.
+type RPCProbe interface {
+	VerifyConnection(ctx context.Context) error
+	BlockNumber(ctx context.Context) (uint64, error)
+}
+
 // MetaService exposes health, readiness, and capability metadata.
 type MetaService struct {
-	cfg config.Config
+	cfg      config.Config
+	rpcProbe RPCProbe
 }
 
 // NewMetaService constructs a MetaService.
-func NewMetaService(cfg config.Config) *MetaService {
-	return &MetaService{cfg: cfg}
+func NewMetaService(cfg config.Config, rpcProbe RPCProbe) *MetaService {
+	return &MetaService{cfg: cfg, rpcProbe: rpcProbe}
 }
 
 // HealthResponse is returned by the liveness endpoint.
@@ -38,7 +48,7 @@ func (s *MetaService) Health() HealthResponse {
 	}
 }
 
-// ReadyResponse describes configuration readiness without false connectivity claims.
+// ReadyResponse describes configuration and optional live dependency checks.
 type ReadyResponse struct {
 	Status  string                        `json:"status"`
 	Ready   bool                          `json:"ready"`
@@ -46,15 +56,62 @@ type ReadyResponse struct {
 	Message string                        `json:"message"`
 }
 
-// Ready reports whether required configuration is present and validated.
-// External RPC/indexer connectivity is explicitly marked as not probed.
-func (s *MetaService) Ready() ReadyResponse {
-	checks := s.cfg.ReadyChecks()
+// Ready reports readiness. RPC may be probed when a client is configured.
+// Etherscan connectivity is never claimed healthy from configuration alone.
+func (s *MetaService) Ready(ctx context.Context) ReadyResponse {
+	checks := map[string]config.CheckResult{
+		"config": {
+			Status:  "ok",
+			Message: "Configuration loaded and validated",
+		},
+		"etherscan": {
+			Status:  "configured",
+			Message: "API key and base URL present; live Etherscan connectivity is not probed by /ready",
+		},
+	}
+
+	ready := true
+	if s.rpcProbe == nil {
+		checks["ethereum_rpc"] = config.CheckResult{
+			Status:  "configured",
+			Message: "RPC client not attached; connectivity not verified",
+		}
+		ready = false
+	} else {
+		probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		if err := s.rpcProbe.VerifyConnection(probeCtx); err != nil {
+			checks["ethereum_rpc"] = config.CheckResult{
+				Status:  "error",
+				Message: err.Error(),
+			}
+			ready = false
+		} else if bn, err := s.rpcProbe.BlockNumber(probeCtx); err != nil {
+			checks["ethereum_rpc"] = config.CheckResult{
+				Status:  "error",
+				Message: err.Error(),
+			}
+			ready = false
+		} else {
+			checks["ethereum_rpc"] = config.CheckResult{
+				Status:  "ok",
+				Message: "RPC reachable; chain ID matches configured mainnet; latest block observed",
+			}
+			_ = bn
+		}
+	}
+
+	status := "ready"
+	msg := "Essential dependencies passed readiness checks."
+	if !ready {
+		status = "not_ready"
+		msg = "One or more essential dependency checks failed or were not verified."
+	}
 	return ReadyResponse{
-		Status:  "ready",
-		Ready:   true,
+		Status:  status,
+		Ready:   ready,
 		Checks:  checks,
-		Message: "Essential configuration is present. External dependency connectivity is not probed in this milestone.",
+		Message: msg,
 	}
 }
 
@@ -88,6 +145,8 @@ type TxTypeInfo struct {
 // Capabilities describes what the API currently offers.
 type Capabilities struct {
 	AddressScanImplemented bool `json:"address_scan_implemented"`
+	AccountLookup          bool `json:"account_lookup"`
+	HistoryRetrieval       bool `json:"history_retrieval"`
 	PublicKeyRecovery      bool `json:"public_key_recovery"`
 	RiskAssessment         bool `json:"risk_assessment"`
 	WalletConnectRequired  bool `json:"wallet_connect_required"`
@@ -100,23 +159,26 @@ type HistoryProviderInfo struct {
 	BaseURL    string `json:"base_url"`
 	APIVersion string `json:"api_version"`
 	Configured bool   `json:"configured"`
+	ChainID    int64  `json:"chain_id"`
 }
 
-// Info returns static capability metadata for the foundation milestone.
+// Info returns capability metadata for the current milestone.
 func (s *MetaService) Info() InfoResponse {
 	return InfoResponse{
 		App:              version.App,
 		Version:          version.Version,
 		RiskModelVersion: version.RiskModelVersion,
-		Chain:            chainInfoFor(s.cfg.ChainID),
+		Chain:            ChainInfo{ChainID: 1, Name: "ethereum-mainnet", NativeAsset: "ETH"},
 		SupportedTxTypes: []TxTypeInfo{
-			{Type: 0, Name: "legacy", Implemented: false, Notes: "Planned; signing-digest recovery not implemented in foundation milestone"},
-			{Type: 1, Name: "eip2930_access_list", Implemented: false, Notes: "Planned; not implemented in foundation milestone"},
-			{Type: 2, Name: "eip1559_dynamic_fee", Implemented: false, Notes: "Planned; not implemented in foundation milestone"},
-			{Type: 3, Name: "eip4844_blob", Implemented: false, Notes: "Planned; not implemented in foundation milestone"},
+			{Type: 0, Name: "legacy", Implemented: false, Notes: "History retrieval available; signature recovery not implemented yet"},
+			{Type: 1, Name: "eip2930_access_list", Implemented: false, Notes: "History retrieval available; signature recovery not implemented yet"},
+			{Type: 2, Name: "eip1559_dynamic_fee", Implemented: false, Notes: "History retrieval available; signature recovery not implemented yet"},
+			{Type: 3, Name: "eip4844_blob", Implemented: false, Notes: "History retrieval available; signature recovery not implemented yet"},
 		},
 		Capabilities: Capabilities{
 			AddressScanImplemented: false,
+			AccountLookup:          true,
+			HistoryRetrieval:       true,
 			PublicKeyRecovery:      false,
 			RiskAssessment:         false,
 			WalletConnectRequired:  false,
@@ -127,23 +189,14 @@ func (s *MetaService) Info() InfoResponse {
 			BaseURL:    s.cfg.EtherscanBaseURL,
 			APIVersion: s.cfg.EtherscanAPIVersion,
 			Configured: s.cfg.EtherscanAPIKey != "",
+			ChainID:    s.cfg.ChainID,
 		},
 		Limitations: []string{
-			"Blockchain scanning is not implemented in this foundation milestone.",
-			"Public-key recovery and risk classification are not yet available via the API.",
-			"Readiness does not verify live Ethereum RPC or Etherscan connectivity.",
+			"MVP supports Ethereum Mainnet (chain id 1) only; mismatched RPC chain IDs are rejected.",
+			"Etherscan history is indexed and capped; complete_within_scope means complete within provider pages/caps, not absolute chain completeness.",
+			"Public-key recovery and risk classification are not yet available.",
+			"Token-transfer and internal-transaction history are not fetched in this milestone.",
 			"Absence of observed exposure will never be reported as quantum-safe.",
 		},
-	}
-}
-
-func chainInfoFor(chainID int64) ChainInfo {
-	switch chainID {
-	case 1:
-		return ChainInfo{ChainID: 1, Name: "ethereum-mainnet", NativeAsset: "ETH"}
-	case 11155111:
-		return ChainInfo{ChainID: 11155111, Name: "ethereum-sepolia", NativeAsset: "ETH"}
-	default:
-		return ChainInfo{ChainID: chainID, Name: "unknown", NativeAsset: "ETH"}
 	}
 }

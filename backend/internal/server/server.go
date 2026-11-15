@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/quantumshield/qguard/backend/internal/blockchain"
 	"github.com/quantumshield/qguard/backend/internal/config"
 	"github.com/quantumshield/qguard/backend/internal/handler"
 	"github.com/quantumshield/qguard/backend/internal/middleware"
@@ -15,8 +16,10 @@ import (
 
 // Options controls HTTP server construction.
 type Options struct {
-	Config config.Config
-	Log    *slog.Logger
+	Config  config.Config
+	Log     *slog.Logger
+	RPC     blockchain.RPCClient
+	Account *service.AccountService
 }
 
 // NewEngine builds the Gin engine with middleware and routes.
@@ -41,14 +44,20 @@ func NewEngine(opts Options) *gin.Engine {
 	r.Use(middleware.CORS(opts.Config.CORSOrigins))
 	r.Use(middleware.Timeout(opts.Config.RequestTimeout))
 
-	meta := service.NewMetaService(opts.Config)
-	api := handler.NewAPI(meta)
+	var rpcProbe service.RPCProbe
+	if opts.RPC != nil {
+		rpcProbe = opts.RPC
+	}
+	meta := service.NewMetaService(opts.Config, rpcProbe)
+	api := handler.NewAPI(meta, opts.Account)
 
 	v1 := r.Group("/api/v1")
 	{
 		v1.GET("/health", api.Health)
 		v1.GET("/ready", api.Ready)
 		v1.GET("/info", api.Info)
+		v1.GET("/accounts/:address", api.GetAccount)
+		v1.GET("/accounts/:address/transactions", api.GetAccountTransactions)
 	}
 
 	r.NoRoute(handler.NotFound)

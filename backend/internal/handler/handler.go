@@ -2,21 +2,25 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/quantumshield/qguard/backend/internal/apierror"
+	"github.com/quantumshield/qguard/backend/internal/blockchain"
+	"github.com/quantumshield/qguard/backend/internal/etherscan"
 	"github.com/quantumshield/qguard/backend/internal/service"
 )
 
 // API groups HTTP handlers for /api/v1.
 type API struct {
-	meta *service.MetaService
+	meta    *service.MetaService
+	account *service.AccountService
 }
 
 // NewAPI constructs the API handler group.
-func NewAPI(meta *service.MetaService) *API {
-	return &API{meta: meta}
+func NewAPI(meta *service.MetaService, account *service.AccountService) *API {
+	return &API{meta: meta, account: account}
 }
 
 // Health handles GET /api/v1/health.
@@ -26,12 +30,73 @@ func (a *API) Health(c *gin.Context) {
 
 // Ready handles GET /api/v1/ready.
 func (a *API) Ready(c *gin.Context) {
-	c.JSON(http.StatusOK, a.meta.Ready())
+	resp := a.meta.Ready(c.Request.Context())
+	status := http.StatusOK
+	if !resp.Ready {
+		status = http.StatusServiceUnavailable
+	}
+	c.JSON(status, resp)
 }
 
 // Info handles GET /api/v1/info.
 func (a *API) Info(c *gin.Context) {
 	c.JSON(http.StatusOK, a.meta.Info())
+}
+
+// GetAccount handles GET /api/v1/accounts/:address.
+func (a *API) GetAccount(c *gin.Context) {
+	if a.account == nil {
+		AbortWithAPIError(c, apierror.Internal("Account service unavailable."))
+		return
+	}
+	view, err := a.account.GetAccount(c.Request.Context(), c.Param("address"))
+	if err != nil {
+		AbortWithAPIError(c, mapAccountError(err))
+		return
+	}
+	c.JSON(http.StatusOK, view)
+}
+
+// GetAccountTransactions handles GET /api/v1/accounts/:address/transactions.
+func (a *API) GetAccountTransactions(c *gin.Context) {
+	if a.account == nil {
+		AbortWithAPIError(c, apierror.Internal("Account service unavailable."))
+		return
+	}
+	hist, err := a.account.GetHistory(c.Request.Context(), c.Param("address"))
+	if err != nil {
+		AbortWithAPIError(c, mapAccountError(err))
+		return
+	}
+	raw, err := service.MarshalTxHistoryJSON(hist)
+	if err != nil {
+		AbortWithAPIError(c, apierror.Internal("Failed to encode history response."))
+		return
+	}
+	c.Data(http.StatusOK, "application/json; charset=utf-8", raw)
+}
+
+func mapAccountError(err error) *apierror.Error {
+	var inv blockchain.ErrInvalidAddress
+	if errors.As(err, &inv) {
+		return apierror.BadRequest(apierror.CodeInvalidRequest, inv.Error())
+	}
+	var mismatch blockchain.ErrChainMismatch
+	if errors.As(err, &mismatch) {
+		return apierror.BadRequest(apierror.CodeUnsupportedChain, mismatch.Error())
+	}
+	var ae *etherscan.APIError
+	if errors.As(err, &ae) {
+		switch ae.Code {
+		case etherscan.CodeInvalidAddr:
+			return apierror.BadRequest(apierror.CodeInvalidRequest, ae.Message)
+		case etherscan.CodeRateLimited:
+			return apierror.New(http.StatusTooManyRequests, "RATE_LIMITED", ae.Message)
+		default:
+			return apierror.New(http.StatusBadGateway, "HISTORY_PROVIDER_ERROR", ae.Message)
+		}
+	}
+	return apierror.New(http.StatusBadGateway, "RPC_UNAVAILABLE", err.Error())
 }
 
 // NotFound is the fallback JSON 404 handler.

@@ -147,7 +147,7 @@ Every completed assessment includes:
 | `unsupported_tx_count` | Unsupported types |
 | `failed_tx_count` | Decode/recovery failures |
 | `verified_exposure_count` | Count of verified exposures |
-| `history_coverage` | `complete_within_caps` \| `partial` \| `none` |
+| `history_coverage` | `complete_within_scope` \| `partial` \| `rate_limited` \| `failed` \| `unsupported` \| `unknown` |
 | `limitations` | Human-readable + machine codes |
 | `risk_model_version` | e.g. `qguard-risk-v1` |
 | `scheme` | e.g. `secp256k1-ecdsa` when applicable |

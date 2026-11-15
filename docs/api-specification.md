@@ -68,7 +68,9 @@ Liveness only. Does not probe Ethereum RPC or Etherscan.
 
 `GET /api/v1/ready`
 
-Returns whether essential configuration is present. External dependency checks are `configured` — **not** live connectivity probes.
+Probes Ethereum RPC (chain ID + block number) when a client is attached. Returns `503` when RPC is missing or mismatched.
+
+**Does not** probe live Etherscan connectivity. Etherscan remains `configured` only — never reported as healthy from `/ready`.
 
 ```json
 {
@@ -76,10 +78,10 @@ Returns whether essential configuration is present. External dependency checks a
   "ready": true,
   "checks": {
     "config": {"status": "ok", "message": "Configuration loaded and validated"},
-    "ethereum_rpc": {"status": "configured", "message": "RPC URL present; connectivity is not probed in the foundation milestone"},
-    "etherscan": {"status": "configured", "message": "API key and base URL present; connectivity is not probed in the foundation milestone"}
+    "ethereum_rpc": {"status": "ok", "message": "RPC reachable; chain ID matches configured mainnet; latest block observed"},
+    "etherscan": {"status": "configured", "message": "API key and base URL present; live Etherscan connectivity is not probed by /ready"}
   },
-  "message": "Essential configuration is present. External dependency connectivity is not probed in this milestone."
+  "message": "Essential dependencies passed readiness checks."
 }
 ```
 
@@ -87,7 +89,50 @@ Returns whether essential configuration is present. External dependency checks a
 
 `GET /api/v1/info`
 
-Returns chain metadata, planned transaction types, and capability flags. In the foundation milestone, scan-related capabilities are explicitly `false` / `implemented: false`.
+Returns mainnet chain metadata and capabilities. `history_retrieval` and `account_lookup` are true; `address_scan_implemented` and `public_key_recovery` remain false.
+
+### 2.1d Account lookup (implemented)
+
+`GET /api/v1/accounts/{address}`
+
+Uses Ethereum RPC `eth_getCode` / `eth_getBalance` for an initial classification signal.
+
+```json
+{
+  "address": "0x2449EcEF5012f0A0e153B278Ef4Fcc9625BC4C78",
+  "kind": "likely_eoa",
+  "has_code": false,
+  "balance_wei": "123",
+  "chain_id": 1,
+  "block_number": 21000000,
+  "limitations": [
+    "Classification uses current eth_getCode as an initial signal, not absolute proof of wallet type."
+  ]
+}
+```
+
+`kind`: `likely_eoa` | `contract_account` | `unknown`
+
+### 2.1e Transaction history (implemented)
+
+`GET /api/v1/accounts/{address}/transactions`
+
+Fetches **normal** transactions via Etherscan API v2 `account/txlist` with pagination, caps, and an explicit coverage object.
+
+Does **not** fetch token transfers or internal transactions in this milestone. Does **not** perform signature recovery.
+
+Coverage statuses:
+
+| Status | Meaning |
+|---|---|
+| `complete_within_scope` | Pagination finished within provider pages/caps (not absolute chain completeness) |
+| `partial` | Truncated by page/tx caps or inconsistent block hashes |
+| `rate_limited` | Stopped due to provider rate limiting |
+| `failed` | Provider/RPC failure before usable completion |
+| `unsupported` | Reserved for unsupported response shapes |
+| `unknown` | Coverage could not be determined confidently |
+
+HTTP 200 from Etherscan alone never implies `complete_within_scope`.
 
 ---
 
@@ -265,7 +310,7 @@ Matches mandatory fields in `business-logic.md` §7.
 
 ### 3.4 History coverage enum
 
-`complete_within_caps` | `partial` | `none`
+`complete_within_scope` | `partial` | `rate_limited` | `failed` | `unsupported` | `unknown`
 
 ---
 
@@ -311,3 +356,18 @@ The Go scan API must **not** call these endpoints when producing assessments.
 ## 7. OpenAPI
 
 During implementation, publish `packages/openapi/qguard-v1.yaml` mirroring this document for frontend codegen / contract tests.
+
+---
+
+## 8. RPC and Etherscan limitations (Prompt 3)
+
+| Area | Limitation |
+|---|---|
+| Chain | Ethereum Mainnet (`chain_id=1`) only; RPC chain mismatch aborts use of that client |
+| Etherscan API | **v2** (`https://api.etherscan.io/v2/api` + `chainid`) |
+| History kind | Normal `txlist` only; no token transfers / internal txs in this milestone |
+| Completeness | Indexed + paginated + capped; never absolute proof of full chain history |
+| Signatures | v2 `txlist` often omits `type` / `v,r,s`; left empty until RPC enrichment / recovery |
+| `/ready` | Probes RPC only; does not claim Etherscan is reachable |
+| Classification | `eth_getCode` is an initial signal (AA / proxies / history not fully modeled) |
+| Reorgs | Optional block-hash spot checks vs RPC; mismatches downgrade coverage to `partial` |

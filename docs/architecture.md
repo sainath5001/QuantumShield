@@ -77,14 +77,17 @@ QuantumShield/                 # repo root (product name: Q-Guard)
 
 **Naming note:** Repository folder is `QuantumShield`; product brand is **Q-Guard**.
 
-### Foundation status
+### Implementation status
 
 | Area | Status |
 |---|---|
-| Config + validation | Implemented |
-| Health / ready / info | Implemented |
+| Config + validation | Implemented (mainnet + Etherscan v2) |
+| Health / ready / info | Implemented (`/ready` probes RPC) |
 | Middleware + JSON errors | Implemented |
-| RPC history / decode / recovery / risk / scan | **Not implemented** (packages reserved with `doc.go`) |
+| RPC client + account classification | Implemented |
+| Etherscan v2 history + coverage model | Implemented |
+| Account / history HTTP endpoints | Implemented |
+| Signature recovery / risk / scan jobs | **Not implemented** |
 | Frontend / quantum-engine | Reserved directories only |
 
 ---

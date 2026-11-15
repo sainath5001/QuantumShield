@@ -33,6 +33,9 @@ func clearConfigEnv(t *testing.T) {
 		"QGUARD_SCAN_MAX_TXS",
 		"QGUARD_RATE_LIMIT_RPS",
 		"QGUARD_RATE_LIMIT_BURST",
+		"QGUARD_ETHERSCAN_MAX_RETRIES",
+		"QGUARD_ETHERSCAN_RETRY_BACKOFF",
+		"QGUARD_BLOCK_HASH_CHECK_LIMIT",
 		"QGUARD_CORS_ORIGINS",
 	}
 	for _, k := range keys {
@@ -46,21 +49,26 @@ func validEnv(t *testing.T) {
 	t.Helper()
 	clearConfigEnv(t)
 	setEnv(t, map[string]string{
-		"QGUARD_ETH_RPC_URL":           "https://eth.example/rpc",
-		"QGUARD_ETHERSCAN_API_KEY":     "test-key",
-		"QGUARD_APP_ENV":               "test",
-		"QGUARD_LOG_LEVEL":             "info",
-		"QGUARD_SERVER_HOST":           "127.0.0.1",
-		"QGUARD_SERVER_PORT":           "8080",
-		"QGUARD_CHAIN_ID":              "1",
-		"QGUARD_CORS_ORIGINS":          "http://localhost:3000",
-		"QGUARD_REQUEST_TIMEOUT":       "15s",
-		"QGUARD_SCAN_TIMEOUT":          "2m",
-		"QGUARD_MAX_HISTORY_PAGE_SIZE": "100",
-		"QGUARD_ETHERSCAN_MAX_PAGES":   "10",
-		"QGUARD_SCAN_MAX_TXS":          "500",
-		"QGUARD_RATE_LIMIT_RPS":        "4",
-		"QGUARD_RATE_LIMIT_BURST":      "8",
+		"QGUARD_ETH_RPC_URL":             "https://eth.example/rpc",
+		"QGUARD_ETHERSCAN_API_KEY":       "test-key",
+		"QGUARD_ETHERSCAN_API_URL":       "https://api.etherscan.io/v2/api",
+		"QGUARD_ETHERSCAN_API_VERSION":   "v2",
+		"QGUARD_APP_ENV":                 "test",
+		"QGUARD_LOG_LEVEL":               "info",
+		"QGUARD_SERVER_HOST":             "127.0.0.1",
+		"QGUARD_SERVER_PORT":             "8080",
+		"QGUARD_CHAIN_ID":                "1",
+		"QGUARD_CORS_ORIGINS":            "http://localhost:3000",
+		"QGUARD_REQUEST_TIMEOUT":         "15s",
+		"QGUARD_SCAN_TIMEOUT":            "2m",
+		"QGUARD_MAX_HISTORY_PAGE_SIZE":   "100",
+		"QGUARD_ETHERSCAN_MAX_PAGES":     "10",
+		"QGUARD_SCAN_MAX_TXS":            "500",
+		"QGUARD_RATE_LIMIT_RPS":          "4",
+		"QGUARD_RATE_LIMIT_BURST":        "8",
+		"QGUARD_ETHERSCAN_MAX_RETRIES":   "3",
+		"QGUARD_ETHERSCAN_RETRY_BACKOFF": "200ms",
+		"QGUARD_BLOCK_HASH_CHECK_LIMIT":  "5",
 	})
 }
 
@@ -170,26 +178,23 @@ func TestLoadInvalidDuration(t *testing.T) {
 	}
 }
 
-func TestReadyChecksDoNotClaimConnectivity(t *testing.T) {
+func TestRejectNonMainnetChainID(t *testing.T) {
 	validEnv(t)
-	cfg, err := Load()
-	if err != nil {
-		t.Fatal(err)
+	t.Setenv("QGUARD_CHAIN_ID", "11155111")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected mainnet-only validation error")
 	}
-	checks := cfg.ReadyChecks()
-	for _, key := range []string{"ethereum_rpc", "etherscan"} {
-		c, ok := checks[key]
-		if !ok {
-			t.Fatalf("missing check %s", key)
-		}
-		if c.Status != "configured" {
-			t.Fatalf("%s status = %q, want configured (must not claim healthy connectivity)", key, c.Status)
-		}
-		if !strings.Contains(strings.ToLower(c.Message), "not probed") {
-			t.Fatalf("%s message should state connectivity not probed: %q", key, c.Message)
-		}
+	if !strings.Contains(err.Error(), "Mainnet") {
+		t.Fatalf("error = %v", err)
 	}
-	if checks["config"].Status != "ok" {
-		t.Fatalf("config status = %q", checks["config"].Status)
+}
+
+func TestRejectEtherscanAPIv1(t *testing.T) {
+	validEnv(t)
+	t.Setenv("QGUARD_ETHERSCAN_API_VERSION", "v1")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected v2 requirement")
 	}
 }

@@ -1,6 +1,3 @@
-// Package blockchain will own Ethereum JSON-RPC communication (account code,
-// transaction fetch, chain identity).
-//
-// Intentionally empty in the foundation milestone: no RPC client or fabricated
-// chain data is provided here. Implementation begins with the scanning milestone.
+// Package blockchain owns Ethereum JSON-RPC connectivity, account classification,
+// and related helpers. MVP supports Ethereum Mainnet (chain id 1) only.
 package blockchain

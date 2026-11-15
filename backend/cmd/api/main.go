@@ -13,13 +13,16 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/quantumshield/qguard/backend/internal/blockchain"
 	"github.com/quantumshield/qguard/backend/internal/config"
+	"github.com/quantumshield/qguard/backend/internal/etherscan"
+	"github.com/quantumshield/qguard/backend/internal/history"
 	"github.com/quantumshield/qguard/backend/internal/server"
+	"github.com/quantumshield/qguard/backend/internal/service"
 	"github.com/quantumshield/qguard/backend/internal/version"
 )
 
 func main() {
-	// Load .env from cwd or repo root when present (local development). Missing file is fine.
 	_ = godotenv.Load()
 	_ = godotenv.Load("../.env")
 	_ = godotenv.Load("../../.env")
@@ -39,7 +42,49 @@ func main() {
 		"chain_id", cfg.ChainID,
 	)
 
-	engine := server.NewEngine(server.Options{Config: cfg, Log: log})
+	ctx, cancelInit := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancelInit()
+
+	var rpc blockchain.RPCClient
+	eth, err := blockchain.Dial(ctx, cfg.EthereumRPCURL, cfg.ChainID)
+	if err != nil {
+		log.Warn("ethereum RPC not ready at startup; /ready will report not_ready until fixed", "err", err)
+	} else {
+		rpc = eth
+		defer eth.Close()
+		log.Info("ethereum RPC connected", "chain_id", cfg.ChainID)
+	}
+
+	esClient, err := etherscan.NewClient(etherscan.Config{
+		BaseURL:     cfg.EtherscanBaseURL,
+		APIKey:      cfg.EtherscanAPIKey,
+		ChainID:     cfg.ChainID,
+		PageSize:    cfg.MaxHistoryPageSize,
+		MaxPages:    cfg.MaxHistoryPages,
+		MaxTxs:      cfg.MaxTransactions,
+		HTTPClient:  &http.Client{Timeout: cfg.RequestTimeout},
+		RateLimit:   etherscan.NewTokenBucket(cfg.RateLimitRPS, cfg.RateLimitBurst),
+		MaxRetries:  cfg.EtherscanMaxRetries,
+		BaseBackoff: cfg.EtherscanRetryBackoff,
+	})
+	if err != nil {
+		log.Error("etherscan client configuration error", "err", err)
+		os.Exit(1)
+	}
+
+	fetcher := &history.Fetcher{
+		Source:        esClient,
+		Verifier:      rpc,
+		MaxHashChecks: cfg.BlockHashCheckLimit,
+	}
+	accountSvc := &service.AccountService{RPC: rpc, History: fetcher}
+
+	engine := server.NewEngine(server.Options{
+		Config:  cfg,
+		Log:     log,
+		RPC:     rpc,
+		Account: accountSvc,
+	})
 	httpServer := server.NewHTTPServer(cfg, engine)
 
 	go func() {
@@ -54,10 +99,10 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctxShutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	log.Info("shutting down")
-	if err := httpServer.Shutdown(ctx); err != nil {
+	if err := httpServer.Shutdown(ctxShutdown); err != nil {
 		log.Error("shutdown error", "err", err)
 		os.Exit(1)
 	}
