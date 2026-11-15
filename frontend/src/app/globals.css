@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 16% 7%;
+  --foreground: 210 30% 94%;
+  --card: 210 16% 10%;
+  --card-foreground: 210 30% 94%;
+  --muted: 210 14% 14%;
+  --muted-foreground: 210 12% 62%;
+  --border: 210 14% 18%;
+  --input: 210 14% 18%;
+  --ring: 187 85% 53%;
+  --primary: 187 85% 45%;
+  --primary-foreground: 210 20% 8%;
+  --accent: 187 70% 40%;
+  --accent-foreground: 210 20% 98%;
+  --destructive: 0 72% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --cyan: 187 85% 53%;
+  --cyan-muted: 187 60% 16%;
+  --quantum: 258 70% 68%;
+  --quantum-muted: 258 40% 18%;
+  --elevated: 0 84% 68%;
+  --lower: 158 64% 52%;
+  --unknown: 43 96% 56%;
+  --review: 258 70% 72%;
+  --radius: 0.5rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(34, 211, 238, 0.06), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(167, 139, 250, 0.05), transparent 50%),
+    hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: "ss01" on, "cv11" on;
+}
+
+::selection {
+  background: hsl(var(--cyan) / 0.25);
+}

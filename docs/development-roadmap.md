@@ -55,10 +55,10 @@
 - Next.js App Router scaffold in `frontend/`.
 - Scan flow + report page + methodology/disclaimers.
 
-### Phase 2 — Frontend MVP
+### Phase 2 — Frontend MVP ✅
 
-- Next.js App Router scaffold in `frontend/`.
-- Scan flow + report page + methodology/disclaimers.
+- Next.js App Router app in `frontend/` (overview, scanner, analysis, reports, quantum lab, learn).
+- Typed API client against Go `/api/v1`; session-local scan index; no fake live metrics.
 
 ### Phase 3 — Quantum education module ✅
 

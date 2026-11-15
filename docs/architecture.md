@@ -65,7 +65,7 @@ QuantumShield/                 # repo root (product name: Q-Guard)
 │   │   └── version/           # app / risk-model version strings
 │   ├── testdata/
 │   └── go.mod
-├── frontend/                  # Next.js (placeholder only)
+├── frontend/                  # Next.js App Router UI
 ├── quantum-engine/            # Python/Qiskit educational module (CLI + pytest)
 ├── scripts/
 │   ├── run-api.sh
@@ -90,7 +90,7 @@ QuantumShield/                 # repo root (product name: Q-Guard)
 | Signature recovery + exposure analysis | Implemented |
 | Risk engine + reports + scan jobs | Implemented (in-memory) |
 | Quantum education module | Implemented (`quantum-engine/`; off evidence path) |
-| Frontend | **Not implemented** (reserved directory) |
+| Frontend | Implemented (`frontend/` Next.js App Router) |
 
 ---
 

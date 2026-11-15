@@ -11,7 +11,7 @@ Repository folder: `QuantumShield`. Product name: **Q-Guard**.
 | Path | Role |
 |---|---|
 | `backend/` | Go API (Gin, go-ethereum) — scanner & assessment owner |
-| `frontend/` | Next.js UI (not scaffolded in foundation milestone) |
+| `frontend/` | Next.js App Router UI (scanner, analysis, reports, quantum lab, learn) |
 | `quantum-engine/` | Python/Qiskit education module (toy Shor/Grover + PQC docs; off evidence path) |
 | `docs/` | Architecture, threat model, API, cryptography |
 | `scripts/` | Local helper scripts |
@@ -45,7 +45,11 @@ Also implemented (Prompt 6):
 - `quantum-engine/` educational Qiskit package (`qguard-quantum` CLI): fundamentals, N=15 Shor toy, tiny Grover, PQC explainers
 - Independent of scan evidence — see `quantum-engine/README.md`
 
-Not implemented yet: frontend, persistent database.
+Also implemented (Prompt 7):
+
+- Next.js frontend against `/api/v1` (see `frontend/README.md`)
+
+Not implemented yet: persistent database; Quantum Lab → Python experiment HTTP bridge.
 
 ## Prerequisites
 
