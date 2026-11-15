@@ -60,10 +60,10 @@
 - Next.js App Router scaffold in `frontend/`.
 - Scan flow + report page + methodology/disclaimers.
 
-### Phase 3 — Quantum education module
+### Phase 3 — Quantum education module ✅
 
-- Python package in `quantum-engine/` with toy Shor/Grover demos.
-- Optional FastAPI sidecar later.
+- Python package in `quantum-engine/` with toy Shor/Grover demos, fundamentals, PQC education, CLI, pytest.
+- Optional FastAPI sidecar later (not required; interface is functions + CLI).
 
 ### Phase 4 — Hardening & expansion
 

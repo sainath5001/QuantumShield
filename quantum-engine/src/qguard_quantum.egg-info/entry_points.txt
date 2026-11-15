@@ -1,0 +1,2 @@
+[console_scripts]
+qguard-quantum = qguard_quantum.cli:main

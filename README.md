@@ -12,7 +12,7 @@ Repository folder: `QuantumShield`. Product name: **Q-Guard**.
 |---|---|
 | `backend/` | Go API (Gin, go-ethereum) — scanner & assessment owner |
 | `frontend/` | Next.js UI (not scaffolded in foundation milestone) |
-| `quantum-engine/` | Python/Qiskit education module (not implemented yet) |
+| `quantum-engine/` | Python/Qiskit education module (toy Shor/Grover + PQC docs; off evidence path) |
 | `docs/` | Architecture, threat model, API, cryptography |
 | `scripts/` | Local helper scripts |
 
@@ -40,7 +40,12 @@ Also implemented (Prompt 5):
 - `GET /api/v1/wallet/:address` (+ `/exposure`, `/risk`)
 - Thread-safe in-memory scan/report store (ephemeral)
 
-Not implemented yet: frontend, Qiskit demos, persistent database.
+Also implemented (Prompt 6):
+
+- `quantum-engine/` educational Qiskit package (`qguard-quantum` CLI): fundamentals, N=15 Shor toy, tiny Grover, PQC explainers
+- Independent of scan evidence — see `quantum-engine/README.md`
+
+Not implemented yet: frontend, persistent database.
 
 ## Prerequisites
 
