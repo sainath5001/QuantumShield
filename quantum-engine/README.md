@@ -54,12 +54,16 @@ pip install -e ".[api,dev]"
 
 ## Local setup (virtual environment)
 
+From repo root: `../scripts/setup-local.sh` (or `../scripts/run-quantum.sh`, which creates the venv if missing).
+
+Manual:
+
 ```bash
 cd quantum-engine
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -e ".[dev]"
+pip install -e ".[dev,api]"
 ```
 
 Record installed versions:

@@ -71,9 +71,19 @@
 - Quantum FastAPI sidecar + Quantum Lab experiment runner.
 - `scripts/run-local.sh`, `run-quantum.sh`, `run-frontend.sh`, `integration-smoke.sh`.
 
-### Phase 4 — Hardening & expansion
+### Phase 4 — Security review & local release prep ✅ (Prompts 9–10)
 
-- OpenAPI package, optional persistence, multi-network, smart-account playbooks.
+- Security/reliability review (`docs/security-review.md`); medium findings remediated.
+- Inbound rate limit, concurrent-scan cap, error sanitization, completed-only address index.
+- Docs: local setup, troubleshooting, release checklist; `setup-local.sh`, `test-all.sh`.
+- Root/backend/frontend/quantum READMEs aligned for demo.
+
+### Phase 5 — Hardening & expansion (next)
+
+- OpenAPI artifact; durable storage + auth for shared demos.
+- Dependency upgrades (Next/zod) after regression suite.
+- Smart-account / AA playbooks; optional SSE progress; CI on `test-all.sh`.
+- Broader history sources with coverage honesty preserved.
 
 ---
 
@@ -106,31 +116,34 @@ cp .env.example .env
 
 | Milestone | Gate | Status |
 |---|---|---|
-| M0 | Config + health/ready/info + middleware tests | ✅ Prompt 2 |
-| M1 | Golden digest tests for supported types | Pending |
-| M2 | Recovery+verify fixtures | Pending |
-| M3 | Risk table tests for all four labels | Pending |
-| M4 | End-to-end mocked scan → API assessment | Pending |
-| M5 | Frontend renders disclaimers for every classification | Pending |
-| M6 | Quantum demos refuse overselling in README/tests | Pending |
+| M0 | Config + health/ready/info + middleware tests | ✅ |
+| M1 | Golden digest tests for supported types | ✅ |
+| M2 | Recovery+verify fixtures | ✅ |
+| M3 | Risk table tests for all four labels | ✅ |
+| M4 | End-to-end mocked scan → API assessment | ✅ |
+| M5 | Frontend renders disclaimers for every classification | ✅ |
+| M6 | Quantum demos refuse overselling in README/tests | ✅ |
+| M7 | Security review + local release docs | ✅ Prompt 9–10 |
 
 ---
 
-## 5. Remaining tasks after Prompt 2
+## 5. Suggested next development milestones
 
-1. Implement scan lifecycle + repository (memory).
-2. Implement blockchain RPC + Etherscan history clients.
-3. Implement transaction decode + cryptography recovery.
-4. Implement exposure aggregation + risk + report.
-5. Add scan REST endpoints per `api-specification.md`.
-6. Scaffold frontend and quantum-engine when authorized.
+1. Generate OpenAPI from Go types; keep docs/API clients in sync.
+2. Add durable scan/report storage and authentication for shared demos.
+3. Upgrade frontend dependency pins after full regression (`npm audit` L-06).
+4. Enrich contract / AA “manual review” guidance without false EOA claims.
+5. Optional SSE for scan progress; keep polling as fallback.
+6. CI: run `scripts/test-all.sh` on every PR.
 
 ---
 
-## 6. Success criteria for a credible MVP
+## 6. Success criteria for a credible local MVP
 
 - A security-literate reviewer can understand evidence vs assumptions.
 - Classification is reproducible for the same fixture set and risk model version.
 - No private key surfaces exist in API or UI.
 - Limitations are impossible to miss on the report page.
 - Quantum demos are clearly educational and decoupled.
+- Local startup is documented and scripted; incomplete history is never sold as complete.
+- Production / public Internet readiness is **not** claimed without auth + durable storage + edge controls.

@@ -1,10 +1,11 @@
-# Q-Guard API Specification (MVP Draft)
+# Q-Guard API Specification (MVP)
 
-Base URL (local): `http://localhost:8080`  
+Base URL (local): `http://127.0.0.1:8080`  
 API prefix: `/api/v1`  
 Content type: `application/json`
 
-This specification is a design contract for the Go backend. It may be refined during implementation but semantic fields for assessments are normative per `business-logic.md`.
+Normative risk/evidence semantics: [`business-logic.md`](./business-logic.md).  
+**Runtime JSON note:** Scan jobs use field `id` (UUID). Nested results use `exposure`, `risk`, and `report_id`. Prefer Go `internal/domain` structs over older illustrative `assessment` / job-level `scan_id` examples below when they disagree.
 
 ---
 
@@ -89,7 +90,7 @@ Probes Ethereum RPC (chain ID + block number) when a client is attached. Returns
 
 `GET /api/v1/info`
 
-Returns mainnet chain metadata and capabilities. `history_retrieval` and `account_lookup` are true; `address_scan_implemented` and `public_key_recovery` remain false.
+Returns mainnet chain metadata and capabilities. MVP sets `account_lookup`, `history_retrieval`, `address_scan_implemented`, `public_key_recovery`, and `risk_assessment` to **true**. `wallet_connect_required` and `private_keys_accepted` remain **false**.
 
 ### 2.1d Account lookup (implemented)
 

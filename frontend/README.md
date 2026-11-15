@@ -23,14 +23,23 @@ Next.js App Router UI for the Q-Guard Ethereum quantum threat scanner.
 
 ## Setup
 
+From repo root (recommended):
+
+```bash
+../scripts/setup-local.sh
+../scripts/run-frontend.sh
+```
+
+Or manually:
+
 ```bash
 cd frontend
 cp .env.example .env.local
 npm install
-npm run dev
+npm run dev -- --hostname 127.0.0.1 --port 3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Start the Go API on `127.0.0.1:8080` (see root README).
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000). Start the Go API (`../scripts/run-api.sh`) and optionally the quantum sidecar. Full stack: [`docs/local-setup.md`](../docs/local-setup.md).
 
 ### Environment
 
@@ -67,11 +76,19 @@ See [`docs/integration.md`](../docs/integration.md). Local startup: `../scripts/
 
 Scan polling: every 2s, 180s timeout. Quantum Lab calls the FastAPI sidecar (no fabricated histograms).
 
+## Product quality (MVP)
+
+- Empty states on overview/reports when the session has no scans
+- Live API data when mocks are disabled (default)
+- History coverage and unknown/manual-review findings shown without “safe” framing
+- Quantum Lab surfaces educational limitations; no fabricated histograms
+- Responsive layout (tables scroll on narrow viewports)
+
 ## Remaining follow-ups
 
-- [ ] Optional SSE for scan progress (polling works for MVP)
-- [ ] Persist session scan index across devices (requires backend list endpoint)
-- [ ] Upgrade Next.js past CVE-flagged 15.1.0 when convenient
+- Optional SSE for scan progress (polling works for MVP)
+- Persist session scan index across devices (requires backend list endpoint)
+- Upgrade Next.js / zod after regression suite (`docs/security-review.md` L-06)
 
 ## Design
 

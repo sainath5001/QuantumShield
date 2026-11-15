@@ -1,8 +1,8 @@
-# Q-Guard Architecture Proposal
+# Q-Guard Architecture
 
 **Product:** Q-Guard — Ethereum Quantum Threat Scanner & Post-Quantum Readiness Platform  
-**Phase:** Backend foundation implemented (Prompt 2). Scanning not yet implemented.  
-**Workspace inspected:** `/home/hp/QuantumShield` was empty at proposal time; no existing files overwritten.
+**Phase:** Local MVP (Prompts 1–10) — Go scanner, Next.js UI, educational Qiskit sidecar.  
+**Deployment target:** Local demonstration. Not multi-tenant production.
 
 ---
 
@@ -13,25 +13,25 @@ Q-Guard is a local-first monorepo with three logical systems:
 | System | Stack | Owns |
 |---|---|---|
 | Backend scanner & API | Go, Gin, go-ethereum | RPC, history, decode, recover, classify, score, REST |
-| Quantum education module | Python, Qiskit | Circuits, toy Shor/Grover demos, explanations |
+| Quantum education module | Python, Qiskit, FastAPI sidecar | Circuits, toy Shor/Grover demos, explanations |
 | Frontend | Next.js App Router, TS, Tailwind, shadcn/ui, Recharts, Lucide | UX, scan UI, reports, education pages |
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  frontend/ (Next.js) — not scaffolded yet                   │
-│  Scan UI · Reports · Education · PQ explainer               │
+│  frontend/ (Next.js :3000)                                  │
+│  Scanner · Analysis · Reports · Quantum Lab · Learn         │
 └───────────────┬─────────────────────────────┬───────────────┘
-                │ REST /api/v1/*              │ (later) quantum demos
+                │ REST /api/v1/*              │ REST educational demos
                 ▼                             ▼
 ┌───────────────────────────────┐   ┌─────────────────────────┐
-│  backend/ (Go/Gin)            │   │  quantum-engine/ (Py)   │
-│  config · handler · service   │   │  demos · explainers     │
-│  blockchain · cryptography …  │   │  (not implemented yet)  │
+│  backend/ (Go/Gin :8080)      │   │  quantum-engine/ (:8090)│
+│  scan · exposure · risk       │   │  Qiskit + FastAPI       │
+│  cryptography · etherscan …   │   │  (never scan evidence)  │
 └───────────┬───────────────────┘   └─────────────────────────┘
             │
      ┌──────┴──────┐
      ▼             ▼
- Ethereum RPC   Etherscan API
+ Ethereum RPC   Etherscan API v2
 ```
 
 **Hard separation:** Public-key exposure detection is **classical** (Go). Qiskit is **never** on the evidence path for scans.
@@ -49,27 +49,27 @@ QuantumShield/                 # repo root (product name: Q-Guard)
 │   ├── cmd/api/               # HTTP server main
 │   ├── internal/
 │   │   ├── apierror/          # structured JSON errors
-│   │   ├── blockchain/        # RPC + address helpers (scan client TBD)
+│   │   ├── blockchain/        # RPC + address helpers + account classify
 │   │   ├── config/            # env loading + validation
-│   │   ├── cryptography/      # pubkey recovery (TBD)
-│   │   ├── exposure/          # exposure evidence aggregation (TBD)
+│   │   ├── cryptography/      # pubkey recovery + sender verify
+│   │   ├── exposure/          # wallet evidence aggregation
+│   │   ├── etherscan/         # v2 txlist + coverage
+│   │   ├── history/           # fetch + block-hash spot checks
 │   │   ├── handler/           # Gin handlers
-│   │   ├── middleware/        # request ID, log, CORS, recovery, timeout
-│   │   ├── quantum/           # classical threat-copy helpers (TBD; not Qiskit)
-│   │   ├── report/            # assessment DTOs (TBD)
-│   │   ├── repository/        # ScanRepository + memory impl (TBD)
-│   │   ├── risk/              # qguard-risk-v1 (TBD)
+│   │   ├── middleware/        # request ID, log, CORS, rate limit, body, timeout
+│   │   ├── quantum/           # classical threat-copy helpers (not Qiskit)
+│   │   ├── report/            # security report builder
+│   │   ├── repository/        # in-memory ScanStore
+│   │   ├── risk/              # qguard-risk-v1
 │   │   ├── server/            # router + http.Server wiring
-│   │   ├── service/           # use-cases (meta/health/info today)
-│   │   ├── transaction/       # typed tx decode + digests (TBD)
+│   │   ├── service/           # meta, account, scan orchestration
+│   │   ├── transaction/       # typed tx helpers
 │   │   └── version/           # app / risk-model version strings
 │   ├── testdata/
 │   └── go.mod
 ├── frontend/                  # Next.js App Router UI
-├── quantum-engine/            # Python/Qiskit educational module (CLI + pytest)
-├── scripts/
-│   ├── run-api.sh
-│   └── test-backend.sh
+├── quantum-engine/            # Python/Qiskit educational module (CLI + FastAPI + pytest)
+├── scripts/                   # setup-local, run-*, test-all, smoke
 ├── .env.example
 ├── .gitignore
 └── README.md
@@ -89,8 +89,10 @@ QuantumShield/                 # repo root (product name: Q-Guard)
 | Account / history HTTP endpoints | Implemented |
 | Signature recovery + exposure analysis | Implemented |
 | Risk engine + reports + scan jobs | Implemented (in-memory) |
-| Quantum education module | Implemented (`quantum-engine/`; off evidence path) |
+| Quantum education module | Implemented (`quantum-engine/` CLI + FastAPI; off evidence path) |
 | Frontend | Implemented (`frontend/` Next.js App Router) |
+| Security hardening (rate limits, sanitization) | Implemented (Prompt 9) |
+| Local demo docs + scripts | Implemented (Prompt 10) |
 
 ---
 

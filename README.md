@@ -1,110 +1,114 @@
 # Q-Guard
 
-Ethereum Quantum Threat Scanner & Post-Quantum Readiness Platform.
+**Ethereum Quantum Threat Scanner & Post-Quantum Readiness Platform**
 
-Q-Guard analyzes public Ethereum addresses for **secp256k1 public-key exposure** relevant to a hypothetical future cryptographically relevant quantum computer. It never requests private keys, never signs transactions, and never claims a wallet is quantum-safe merely because no exposure was observed.
+Q-Guard analyzes **public** Ethereum Mainnet addresses for **secp256k1 public-key exposure** that would matter under a future cryptographically relevant quantum computer. It never requests private keys, never signs transactions, and never claims a wallet is quantum-safe merely because no exposure was observed in scope.
 
 Repository folder: `QuantumShield`. Product name: **Q-Guard**.
+
+> **Status:** Local MVP — demonstrable for developers, auditors, and quantum researchers.  
+> **Not claimed:** Production multi-tenant readiness or public Internet deployment without additional controls.  
+> See [`docs/release-checklist.md`](docs/release-checklist.md) and [`docs/security-review.md`](docs/security-review.md).
 
 ## Monorepo layout
 
 | Path | Role |
 |---|---|
 | `backend/` | Go API (Gin, go-ethereum) — scanner & assessment owner |
-| `frontend/` | Next.js App Router UI (scanner, analysis, reports, quantum lab, learn) |
-| `quantum-engine/` | Python/Qiskit education module (toy Shor/Grover + PQC docs; off evidence path) |
-| `docs/` | Architecture, threat model, API, cryptography |
-| `scripts/` | Local helper scripts |
+| `frontend/` | Next.js App Router UI |
+| `quantum-engine/` | Python/Qiskit education (toy Shor/Grover + PQC); off evidence path |
+| `docs/` | Architecture, threat model, API, crypto, security, setup |
+| `scripts/` | Local setup, run, and test helpers |
 
-## Current milestone: RPC + history integration
-
-Implemented:
-
-- Configuration from environment (Mainnet + Etherscan API v2)
-- `GET /api/v1/health` — liveness + version
-- `GET /api/v1/ready` — probes Ethereum RPC chain ID; does **not** claim Etherscan is healthy
-- `GET /api/v1/info` — capabilities (`history_retrieval` true; scan/recovery still false)
-- `GET /api/v1/accounts/:address` — balance + code-based classification signal
-- `GET /api/v1/accounts/:address/transactions` — Etherscan normal tx history + coverage
-- Middleware: request ID, structured logging, recovery, CORS, request timeout
-
-Also implemented (Prompt 4):
-
-- secp256k1 public-key recovery for legacy / EIP-2930 / EIP-1559 / EIP-4844
-- `GET /api/v1/accounts/:address/exposure` — verified exposure evidence (not a risk score)
-
-Also implemented (Prompt 5):
-
-- `qguard-risk-v1` risk engine + security reports
-- `POST /api/v1/scan`, `GET /api/v1/scan/:id`, `GET /api/v1/reports/:id`
-- `GET /api/v1/wallet/:address` (+ `/exposure`, `/risk`)
-- Thread-safe in-memory scan/report store (ephemeral)
-
-Also implemented (Prompt 6):
-
-- `quantum-engine/` educational Qiskit package (`qguard-quantum` CLI): fundamentals, N=15 Shor toy, tiny Grover, PQC explainers
-- Independent of scan evidence — see `quantum-engine/README.md`
-
-Also implemented (Prompt 7–8):
-
-- Next.js frontend against `/api/v1` (see `frontend/README.md`)
-- Quantum FastAPI sidecar on `:8090` + local integration scripts (`docs/integration.md`)
-
-Not implemented yet: persistent database; scan cancellation; SSE progress.
-
-## Prerequisites
-
-- Go 1.22+ (developed with Go 1.27)
-- Ethereum JSON-RPC URL and Etherscan API key for configuration validation (connectivity unused until scanning lands)
-
-## Configure
+## Quick start (local demo)
 
 ```bash
-cp .env.example .env
+./scripts/setup-local.sh          # .env files + Go/Python/npm deps
 # edit .env — set QGUARD_ETH_RPC_URL and QGUARD_ETHERSCAN_API_KEY
+
+./scripts/run-local.sh            # prints three-terminal instructions
+./scripts/run-api.sh              # :8080  (secrets stay here)
+./scripts/run-quantum.sh          # :8090  (educational)
+./scripts/run-frontend.sh         # :3000  (UI)
+
+./scripts/test-all.sh             # Go + pytest + frontend
 ```
 
-## Run the local stack
+Full guide: [`docs/local-setup.md`](docs/local-setup.md) · Troubleshooting: [`docs/troubleshooting.md`](docs/troubleshooting.md)
 
-```bash
-./scripts/run-local.sh          # prints three-terminal instructions
-./scripts/run-api.sh            # Go API :8080 (needs .env with RPC + Etherscan)
-./scripts/run-quantum.sh        # Quantum education API :8090
-./scripts/run-frontend.sh       # Next.js :3000
-./scripts/integration-smoke.sh  # optional contract smoke when services are up
-```
+## What the MVP implements
 
-Server listens on `QGUARD_SERVER_HOST:QGUARD_SERVER_PORT` (default `127.0.0.1:8080`).
+- Mainnet-only account classification (`eth_getCode` / balance)
+- Etherscan v2 normal-tx history with explicit **coverage** (never silent completeness)
+- secp256k1 recovery for legacy / EIP-2930 / EIP-1559 / EIP-4844 with **sender verification**
+- `qguard-risk-v1` classifications + security reports (limitations required)
+- Async scan jobs (`POST /scan` → poll → report); in-memory ephemeral store
+- Next.js scanner, analysis, reports, Quantum Lab, Learn pages
+- Educational Qiskit CLI + FastAPI sidecar (resource-capped demos)
 
-### Smoke checks
+**Not included:** persistent DB, auth, scan cancellation, SSE, non-Mainnet chains, WalletConnect, private-key intake.
 
-```bash
-curl -s http://127.0.0.1:8080/api/v1/health | jq
-curl -s http://127.0.0.1:8080/api/v1/ready | jq
-curl -s http://127.0.0.1:8080/api/v1/info | jq
-curl -s http://127.0.0.1:8080/api/v1/accounts/0x0000000000000000000000000000000000000000 | jq
-curl -s "http://127.0.0.1:8080/api/v1/accounts/0x0000000000000000000000000000000000000000/transactions" | jq
-```
+## Core product rules
 
-## Test
+1. **Exposure ≠ compromise** — public-key recovery is not proof of present-day theft.
+2. **No exposure ≠ quantum-safe** — scoped history can miss evidence.
+3. **Private keys never collected** — API and UI reject key/mnemonic fields by design.
+4. **Quantum demos ≠ scan evidence** — Qiskit stays educational and decoupled.
+5. **Incomplete data stays visible** — coverage statuses and unknown findings are first-class.
 
-```bash
-./scripts/test-backend.sh
-# or
-cd backend && go test ./...
-```
+## Documentation index
 
-## Documentation
+| Doc | Purpose |
+|---|---|
+| [Local setup](docs/local-setup.md) | Install, start, stop, demo flow |
+| [Troubleshooting](docs/troubleshooting.md) | Common failures |
+| [Release checklist](docs/release-checklist.md) | Demo / OSS readiness gates |
+| [MVP final report](docs/mvp-final-report.md) | Prompt 10 summary for demos |
+| [Architecture](docs/architecture.md) | System design |
+| [Business logic](docs/business-logic.md) | Risk semantics |
+| [API specification](docs/api-specification.md) | REST contract |
+| [Cryptography](docs/cryptography.md) | Digests, recovery, verification |
+| [Quantum threat model](docs/quantum-threat-model.md) | Threat framing |
+| [Security review](docs/security-review.md) | Prompt 9 findings + remediations |
+| [Integration](docs/integration.md) | Frontend ↔ APIs |
+| [Development roadmap](docs/development-roadmap.md) | Phases & next milestones |
+| [Backend README](backend/README.md) | Go API |
+| [Frontend README](frontend/README.md) | Next.js UI |
+| [Quantum engine README](quantum-engine/README.md) | Qiskit module |
 
-- [Architecture](docs/architecture.md)
-- [Business logic](docs/business-logic.md)
-- [API specification](docs/api-specification.md)
-- [Quantum threat model](docs/quantum-threat-model.md)
-- [Cryptography](docs/cryptography.md)
-- [Development roadmap](docs/development-roadmap.md)
+## API endpoints (summary)
+
+| Method | Path |
+|---|---|
+| GET | `/api/v1/health`, `/ready`, `/info` |
+| GET | `/api/v1/accounts/:address` (+ `/transactions`, `/exposure`) |
+| POST | `/api/v1/scan` |
+| GET | `/api/v1/scan/:id`, `/api/v1/reports/:id` |
+| GET | `/api/v1/wallet/:address` (+ `/exposure`, `/risk`) |
+
+## Frontend pages
+
+| Route | Purpose |
+|---|---|
+| `/` | Overview + session stats + quick scan |
+| `/scanner` | Full scanner with progress polling |
+| `/wallet/[address]` | Analysis (risk, exposure, evidence, coverage) |
+| `/reports`, `/reports/[id]` | Session report index + detail/export |
+| `/quantum` | Educational Quantum Lab |
+| `/learn` | Methodology & threat education |
+
+## Quantum experiments
+
+| Experiment | Scope |
+|---|---|
+| Fundamentals | Superposition, Bell, gate explainers |
+| Shor (educational) | Period finding for **N=15** (not secp256k1) |
+| Grover (educational) | ≤4 qubits unstructured search |
+| PQC explainers | ML-DSA, ML-KEM, SLH-DSA overview |
 
 ## Security notes
 
-- Never put private keys, seed phrases, or wallet passwords in `.env` or API requests.
-- Do not treat `ready: true` as proof that Ethereum RPC or Etherscan are reachable.
-- Educational quantum demos (future `quantum-engine/`) are not evidence for scan results.
+- Secrets (RPC URL, Etherscan key) live only in root `.env` for the Go process.
+- Browser env may expose only `NEXT_PUBLIC_*` base URLs.
+- Local bind defaults to `127.0.0.1`. Do not expose unauthenticated APIs publicly.
+- See security review for remediated medium findings (address index, rate limits, error sanitization).
