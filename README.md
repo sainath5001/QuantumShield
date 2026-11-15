@@ -28,7 +28,12 @@ Implemented:
 - `GET /api/v1/accounts/:address/transactions` — Etherscan normal tx history + coverage
 - Middleware: request ID, structured logging, recovery, CORS, request timeout
 
-Not implemented yet: signature recovery, risk scoring, scan jobs, frontend, Qiskit demos.
+Also implemented (Prompt 4):
+
+- secp256k1 public-key recovery for legacy / EIP-2930 / EIP-1559 / EIP-4844
+- `GET /api/v1/accounts/:address/exposure` — verified exposure evidence (not a risk score)
+
+Not implemented yet: risk scoring, scan jobs, frontend, Qiskit demos.
 
 ## Prerequisites
 

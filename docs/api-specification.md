@@ -134,6 +134,18 @@ Coverage statuses:
 
 HTTP 200 from Etherscan alone never implies `complete_within_scope`.
 
+### 2.1f Public-key exposure analysis (implemented)
+
+`GET /api/v1/accounts/{address}/exposure`
+
+Runs classification + (for likely EOAs) history fetch + RPC signed-tx recovery.
+
+- **Confirmed exposure** only when recovery succeeds and the derived address matches the analyzed wallet.
+- Contract accounts → `finding: requires_manual_review` (no EOA recovery claims).
+- Does **not** return a risk score.
+
+Findings: `public_key_exposed` | `no_exposure_observed_in_scope` | `insufficient_evidence` | `requires_manual_review`
+
 ---
 
 ### 2.2 Create scan (not implemented yet)

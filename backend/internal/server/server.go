@@ -58,6 +58,7 @@ func NewEngine(opts Options) *gin.Engine {
 		v1.GET("/info", api.Info)
 		v1.GET("/accounts/:address", api.GetAccount)
 		v1.GET("/accounts/:address/transactions", api.GetAccountTransactions)
+		v1.GET("/accounts/:address/exposure", api.GetAccountExposure)
 	}
 
 	r.NoRoute(handler.NotFound)

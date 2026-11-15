@@ -8,13 +8,17 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/quantumshield/qguard/backend/internal/blockchain"
 	"github.com/quantumshield/qguard/backend/internal/domain"
+	"github.com/quantumshield/qguard/backend/internal/exposure"
 	"github.com/quantumshield/qguard/backend/internal/history"
 )
 
-// AccountService exposes account classification and history retrieval.
+// AccountService exposes account classification, history retrieval, and exposure analysis.
 type AccountService struct {
-	RPC     blockchain.RPCClient
-	History *history.Fetcher
+	RPC      blockchain.RPCClient
+	History  *history.Fetcher
+	Exposure *exposure.Analyzer
+	ChainID  *big.Int
+	MaxTxs   int
 }
 
 // AccountView is a JSON-friendly account snapshot.
@@ -54,6 +58,46 @@ func (s *AccountService) GetHistory(ctx context.Context, rawAddress string) (dom
 		return domain.TransactionHistory{}, errHistoryUnavailable
 	}
 	return s.History.Fetch(ctx, rawAddress)
+}
+
+// GetExposure runs public-key recovery analysis for an address.
+// It does not assign a risk score.
+func (s *AccountService) GetExposure(ctx context.Context, rawAddress string) (domain.WalletExposureReport, error) {
+	addr, err := blockchain.ParseAddress(rawAddress)
+	if err != nil {
+		return domain.WalletExposureReport{}, err
+	}
+	if s.RPC == nil {
+		return domain.WalletExposureReport{}, errRPCUnavailable
+	}
+	if s.Exposure == nil {
+		return domain.WalletExposureReport{}, errExposureUnavailable
+	}
+	if s.History == nil {
+		return domain.WalletExposureReport{}, errHistoryUnavailable
+	}
+
+	snap, err := s.RPC.ClassifyAccount(ctx, addr)
+	if err != nil {
+		return domain.WalletExposureReport{}, err
+	}
+
+	hist := domain.TransactionHistory{
+		Coverage: domain.HistoryCoverage{Status: domain.CoverageUnknown},
+	}
+	if snap.Kind != domain.AccountContract && snap.Kind != domain.AccountUnknown {
+		hist, err = s.History.Fetch(ctx, rawAddress)
+		if err != nil {
+			return domain.WalletExposureReport{}, err
+		}
+	}
+
+	return s.Exposure.Analyze(ctx, exposure.AnalyzeInput{
+		Address:         addr,
+		AccountKind:     snap.Kind,
+		History:         hist,
+		MaxTransactions: s.MaxTxs,
+	})
 }
 
 func accountViewFromSnapshot(snap domain.AccountSnapshot) AccountView {
@@ -162,6 +206,7 @@ type staticError string
 func (e staticError) Error() string { return string(e) }
 
 const (
-	errRPCUnavailable     staticError = "ethereum RPC client is not configured"
-	errHistoryUnavailable staticError = "history client is not configured"
+	errRPCUnavailable      staticError = "ethereum RPC client is not configured"
+	errHistoryUnavailable  staticError = "history client is not configured"
+	errExposureUnavailable staticError = "exposure analyzer is not configured"
 )

@@ -2,10 +2,13 @@ package blockchain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/quantumshield/qguard/backend/internal/domain"
@@ -23,6 +26,7 @@ type RPCClient interface {
 	BalanceAt(ctx context.Context, addr common.Address) (*big.Int, error)
 	CodeAt(ctx context.Context, addr common.Address) ([]byte, error)
 	BlockHashByNumber(ctx context.Context, number uint64) (common.Hash, error)
+	TransactionByHash(ctx context.Context, hash common.Hash) (*types.Transaction, bool, error)
 	ClassifyAccount(ctx context.Context, addr common.Address) (domain.AccountSnapshot, error)
 }
 
@@ -131,6 +135,22 @@ func (c *EthClient) BlockHashByNumber(ctx context.Context, number uint64) (commo
 		return common.Hash{}, err
 	}
 	return header.Hash(), nil
+}
+
+// TransactionByHash loads a full signed transaction for cryptographic analysis.
+// The bool is true when the transaction exists (pending or mined).
+func (c *EthClient) TransactionByHash(ctx context.Context, hash common.Hash) (*types.Transaction, bool, error) {
+	if err := c.ensureVerified(ctx); err != nil {
+		return nil, false, err
+	}
+	tx, _, err := c.inner.TransactionByHash(ctx, hash)
+	if err != nil {
+		if errors.Is(err, ethereum.NotFound) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	return tx, true, nil
 }
 
 // ClassifyAccount loads balance/code and returns an initial account kind signal.

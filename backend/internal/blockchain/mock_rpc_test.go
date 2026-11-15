@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/quantumshield/qguard/backend/internal/domain"
 )
 
@@ -43,6 +44,9 @@ func (m *mockRPC) BlockHashByNumber(ctx context.Context, number uint64) (common.
 		return h, nil
 	}
 	return common.Hash{}, context.Canceled
+}
+func (m *mockRPC) TransactionByHash(ctx context.Context, hash common.Hash) (*types.Transaction, bool, error) {
+	return nil, false, nil
 }
 func (m *mockRPC) ClassifyAccount(ctx context.Context, addr common.Address) (domain.AccountSnapshot, error) {
 	if err := m.VerifyConnection(ctx); err != nil {

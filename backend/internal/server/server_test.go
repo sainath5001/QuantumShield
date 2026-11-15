@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/quantumshield/qguard/backend/internal/apierror"
 	"github.com/quantumshield/qguard/backend/internal/blockchain"
 	"github.com/quantumshield/qguard/backend/internal/config"
@@ -68,6 +69,9 @@ func (f fakeRPC) BalanceAt(ctx context.Context, addr common.Address) (*big.Int, 
 func (f fakeRPC) CodeAt(ctx context.Context, addr common.Address) ([]byte, error) { return nil, nil }
 func (f fakeRPC) BlockHashByNumber(ctx context.Context, number uint64) (common.Hash, error) {
 	return common.Hash{}, nil
+}
+func (f fakeRPC) TransactionByHash(ctx context.Context, hash common.Hash) (*types.Transaction, bool, error) {
+	return nil, false, nil
 }
 func (f fakeRPC) ClassifyAccount(ctx context.Context, addr common.Address) (domain.AccountSnapshot, error) {
 	return domain.AccountSnapshot{
@@ -171,14 +175,15 @@ func TestInfoEndpointCapabilities(t *testing.T) {
 			HistoryRetrieval       bool `json:"history_retrieval"`
 			AddressScanImplemented bool `json:"address_scan_implemented"`
 			PublicKeyRecovery      bool `json:"public_key_recovery"`
+			RiskAssessment         bool `json:"risk_assessment"`
 		} `json:"capabilities"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
-	if !body.Capabilities.HistoryRetrieval {
-		t.Fatal("expected history_retrieval true")
+	if !body.Capabilities.HistoryRetrieval || !body.Capabilities.PublicKeyRecovery {
+		t.Fatal("expected history_retrieval and public_key_recovery true")
 	}
-	if body.Capabilities.AddressScanImplemented || body.Capabilities.PublicKeyRecovery {
-		t.Fatal("scan/recovery must remain false")
+	if body.Capabilities.AddressScanImplemented || body.Capabilities.RiskAssessment {
+		t.Fatal("scan jobs / risk assessment must remain false")
 	}
 }
 

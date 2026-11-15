@@ -94,15 +94,30 @@ Ethereum has evolved multiple transaction encodings. The **signing digest** (the
 
 Any transaction type not explicitly implemented in the decoder must be counted as **unsupported**, not silently skipped as “no exposure.” Future types (e.g., additional EIP envelopes) require explicit support before recovery claims.
 
-### 4.6 Implementation rule
+### 4.6 Implementation rule (Q-Guard `internal/cryptography`)
 
-For each examined transaction:
+Implemented in Go using **go-ethereum only** for curve math, digests, and recovery. No custom elliptic-curve arithmetic.
 
-1. Detect type.
-2. Rebuild the exact signing digest per the EIP.
-3. Recover public key from `(digest, r, s, yParity/v)`.
-4. Derive address from recovered key; compare to `tx.from`.
-5. Record match / mismatch / decode failure with evidence.
+For each examined signed transaction:
+
+1. Load the full signed transaction from Ethereum RPC (`eth_getTransactionByHash`). Indexer history alone is insufficient when `v/r/s` are omitted.
+2. Reject unsupported envelope types (`RecoveryUnsupportedType`). Supported: legacy (0), EIP-2930 (1), EIP-1559 (2), EIP-4844 (3).
+3. Obtain the **canonical signing digest** (never the signed transaction identifying hash alone):
+   - Legacy unprotected → `HomesteadSigner.Hash`
+   - Legacy EIP-155 → `EIP155Signer.Hash`
+   - Type 1 → `EIP2930Signer.Hash`
+   - Type 2 → `LondonSigner.Hash`
+   - Type 3 → `CancunSigner.Hash`
+4. Normalize recovery id: EIP-155 `V` → plain `{27,28}`; typed `yParity` `{0,1}` → `{27,28}`.
+5. Validate `(r,s,v)` with `crypto.ValidateSignatureValues`, then `crypto.Ecrecover`.
+6. Derive address with `crypto.PubkeyToAddress` / Keccak-256 of uncompressed `X||Y`.
+7. Cross-check against `types.Sender(LatestSignerForChainID, tx)`.
+8. Compare derived address to expected sender (`tx.from` / analyzed wallet).
+9. Mark **`confirmed` only if recovery succeeds and sender verification succeeds**. Otherwise record `recovery_failed`, `invalid_signature`, `sender_mismatch`, `missing_signature`, `unsupported_type`, `fetch_failed`, or `inconclusive` — never silently ignore failures.
+
+**Contract accounts:** EOA recovery rules are **not** applied. Finding = `requires_manual_review`.
+
+**API:** `GET /api/v1/accounts/{address}/exposure` returns a `WalletExposureReport` (finding + evidence). This is **not** a risk score.
 
 ---
 
@@ -203,24 +218,29 @@ Q-Guard’s scanner remains classical analysis of current ECDSA exposure; PQ con
 
 ## 10. Libraries and implementation notes (Go)
 
-Planned stack (no application code in this phase):
-
 | Concern | Approach |
 |---|---|
-| RPC / types | `go-ethereum` (`ethclient`, `types.Transaction`, `crypto`) |
-| Keccak-256 | `go-ethereum/crypto` (or equivalent audited Keccak) |
-| ECDSA recover | `crypto.SigToPub` / equivalent with correct `v`/`yParity` normalization |
-| Address check | `crypto.PubkeyToAddress` vs `tx.From()` / recovered sender |
+| RPC / types | `go-ethereum` (`ethclient`, `types.Transaction`, signers) |
+| Keccak-256 | `go-ethereum/crypto.Keccak256` |
+| ECDSA recover | `crypto.Ecrecover` / `crypto.SigToPub` after canonical digest |
+| Address check | `crypto.PubkeyToAddress` + `types.Sender` cross-check |
+| Packages | `internal/cryptography` (per-tx), `internal/exposure` (wallet-level) |
 
-**Cryptographic implementation risks (must be mitigated in tests):**
+**Cryptographic implementation risks (mitigated in tests):**
 
-1. Wrong signing hash for typed transactions → false “no recovery” or wrong key.
+1. Wrong signing hash for typed / Homestead vs EIP-155 legacy → false “no recovery” or wrong key.
 2. Incorrect `v` / `yParity` normalization (27/28 vs 0/1).
-3. Compressed vs uncompressed pubkey handling in hashing.
-4. Treating contract `from` as EOA.
-5. Trusting indexed API `from` without verifying recovery.
+3. Compressed vs uncompressed pubkey handling in hashing (address uses 64-byte `X\|\|Y`).
+4. Treating contract accounts as EOAs.
+5. Trusting indexer `from` without verified recovery against RPC-signed tx.
 6. Claiming global non-exposure from partial history.
-7. Confusing signature malleability / `s` normalization with exposure status.
+7. Marking unverified recovery as confirmed (forbidden).
+
+**Unsupported / deferred:**
+
+- Transaction types beyond 0–3 (e.g. future envelopes).
+- Off-chain / EIP-712 / smart-account validation paths.
+- Risk scoring (`qguard-risk-v1`) — separate milestone.
 
 ---
 

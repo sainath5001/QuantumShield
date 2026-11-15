@@ -34,10 +34,17 @@
 - Mocked unit tests + documented fixtures.
 - **Deferred:** signature recovery, risk scoring, scan jobs, frontend, Qiskit.
 
-### Phase 1c — Scanner core (next)
+### Phase 1c — Signature recovery + exposure ✅ (Prompt 4)
+
+- `internal/cryptography`: canonical digests + Ecrecover + sender verification.
+- `internal/exposure`: wallet-level evidence aggregation; contract gating.
+- Endpoint: `GET /api/v1/accounts/:address/exposure`.
+- Fixture tests for legacy / 2930 / 1559 / 4844.
+- **Deferred:** risk scoring, scan jobs, frontend.
+
+### Phase 1d — Scanner core + risk (next)
 
 - In-memory `ScanRepository`.
-- Tx decode + recovery + verification.
 - Risk engine `qguard-risk-v1`.
 - `POST /api/v1/scans` + `GET /api/v1/scans/{id}`.
 - Unit/integration tests with fixtures.

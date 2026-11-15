@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"math/big"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +17,7 @@ import (
 	"github.com/quantumshield/qguard/backend/internal/blockchain"
 	"github.com/quantumshield/qguard/backend/internal/config"
 	"github.com/quantumshield/qguard/backend/internal/etherscan"
+	"github.com/quantumshield/qguard/backend/internal/exposure"
 	"github.com/quantumshield/qguard/backend/internal/history"
 	"github.com/quantumshield/qguard/backend/internal/server"
 	"github.com/quantumshield/qguard/backend/internal/service"
@@ -77,7 +79,17 @@ func main() {
 		Verifier:      rpc,
 		MaxHashChecks: cfg.BlockHashCheckLimit,
 	}
-	accountSvc := &service.AccountService{RPC: rpc, History: fetcher}
+	var exp *exposure.Analyzer
+	if rpc != nil {
+		exp = &exposure.Analyzer{Txs: rpc, ChainID: big.NewInt(cfg.ChainID)}
+	}
+	accountSvc := &service.AccountService{
+		RPC:      rpc,
+		History:  fetcher,
+		Exposure: exp,
+		ChainID:  big.NewInt(cfg.ChainID),
+		MaxTxs:   cfg.MaxTransactions,
+	}
 
 	engine := server.NewEngine(server.Options{
 		Config:  cfg,

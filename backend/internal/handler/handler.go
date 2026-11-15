@@ -76,6 +76,20 @@ func (a *API) GetAccountTransactions(c *gin.Context) {
 	c.Data(http.StatusOK, "application/json; charset=utf-8", raw)
 }
 
+// GetAccountExposure handles GET /api/v1/accounts/:address/exposure.
+func (a *API) GetAccountExposure(c *gin.Context) {
+	if a.account == nil {
+		AbortWithAPIError(c, apierror.Internal("Account service unavailable."))
+		return
+	}
+	report, err := a.account.GetExposure(c.Request.Context(), c.Param("address"))
+	if err != nil {
+		AbortWithAPIError(c, mapAccountError(err))
+		return
+	}
+	c.JSON(http.StatusOK, report)
+}
+
 func mapAccountError(err error) *apierror.Error {
 	var inv blockchain.ErrInvalidAddress
 	if errors.As(err, &inv) {
